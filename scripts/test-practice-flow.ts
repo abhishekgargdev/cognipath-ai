@@ -115,17 +115,24 @@ function createOnce(fn) {
   console.log('\n--- Testing AI Diagnostic Evaluation Task ---');
   const initialXp = profile.xp;
 
+  const failures = runnerResult.results
+    .filter((r: any) => !r.passed)
+    .map((r: any) => ({
+      input: String(r.input || ''),
+      expected: String(r.expectedOutput || ''),
+      actual: String(r.actualOutput || ''),
+    }));
+
   const evalDiagnostic = await evaluateAnswerTask({
-    topicTitle: question.title,
     questionPrompt: question.prompt,
-    questionType: question.type,
-    userCode: sampleCode,
-    testResults: runnerResult.results.map((r) => ({
-      passed: r.passed,
-      input: r.input || 'sample',
-      expected: r.expectedOutput,
-      actual: r.actualOutput,
-    })),
+    submittedCode: sampleCode,
+    language: 'javascript',
+    isPassed: runnerResult.passed,
+    testResults: {
+      passedTests: runnerResult.results.filter((r) => r.passed).length,
+      totalTests: runnerResult.results.length,
+      failures,
+    },
   });
 
   console.log('✓ AI Evaluation diagnostic generated successfully:');

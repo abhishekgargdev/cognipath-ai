@@ -51,10 +51,10 @@ export async function GET(req: Request) {
 
           try {
             const aiGenerated = await generateQuestionTask({
-              topicTitle: currentTopicId.replace(/-/g, ' '),
-              experienceLevel,
+              topic: currentTopicId.replace(/-/g, ' '),
+              topicId: currentTopicId,
               difficulty: 'Intermediate',
-              questionType: qType,
+              type: qType,
             });
 
             const newQ = await PracticeQuestion.findOneAndUpdate(

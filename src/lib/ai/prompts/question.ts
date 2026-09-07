@@ -1,7 +1,7 @@
 export interface QuestionPromptInput {
   topic: string;
   difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
-  type?: 'coding' | 'mcq' | 'output_prediction' | 'debugging' | 'scenario';
+  type?: 'concept' | 'coding' | 'mcq' | 'output_prediction' | 'debugging' | 'scenario';
   topicId?: string;
 }
 

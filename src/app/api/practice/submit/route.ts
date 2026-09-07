@@ -97,15 +97,26 @@ export async function POST(req: Request) {
       ];
     }
 
-    // 3. AI Evaluation Task
     let diagnosticPayload: any;
     try {
+      const failures = runnerResults
+        .filter((r: any) => !r.passed)
+        .map((r: any) => ({
+          input: String(r.input || ''),
+          expected: String(r.expected || ''),
+          actual: String(r.actual || ''),
+        }));
+
       diagnosticPayload = await evaluateAnswerTask({
-        topicTitle: question.title,
         questionPrompt: question.prompt,
-        questionType: question.type,
-        userCode: code || selectedOption,
-        testResults: runnerResults,
+        submittedCode: code || selectedOption,
+        language: language || question.language || 'javascript',
+        isPassed,
+        testResults: {
+          passedTests,
+          totalTests,
+          failures,
+        },
       });
     } catch (aiErr) {
       console.warn('[Submit API] AI Evaluation task fallback triggered:', aiErr);
