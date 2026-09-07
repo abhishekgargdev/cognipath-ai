@@ -10,6 +10,9 @@ import { hashPassword, verifyPassword } from '@/lib/auth/password';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: MongoDBAdapter(clientPromise),
+  session: {
+    strategy: 'jwt',
+  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -125,17 +128,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role || 'student';
       }
       return token;
     },
-    async session({ session, user, token }) {
-      if (session.user) {
-        session.user.id = user?.id || (token?.id as string) || token?.sub || 'demo-user-id';
-        (session.user as any).role = (user as any)?.role || (token?.role as string) || 'student';
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = (token.id as string) || (token.sub as string) || '';
+        (session.user as any).role = (token.role as string) || 'student';
       }
       return session;
     },

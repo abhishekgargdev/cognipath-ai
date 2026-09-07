@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { X, Sparkles, ArrowRight, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { verifySession } from '@/app/actions/auth';
 
 export interface AuthModalProps {
   isOpen: boolean;
@@ -68,12 +69,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (success) {
       toast.success('Authenticated! Navigating to Mission Control...');
       onClose();
-      // Use router.push which respects Next.js navigation patterns
-      setTimeout(() => {
-        router.push('/dashboard');
-        // Also refresh to ensure session is fully synced
-        router.refresh();
-      }, 300);
+      
+      // Verify session exists before redirecting
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      const checkAndRedirect = async () => {
+        attempts++;
+        const { isAuthenticated } = await verifySession();
+        
+        if (isAuthenticated) {
+          window.location.href = '/dashboard';
+          return;
+        }
+        
+        if (attempts < maxAttempts) {
+          setTimeout(checkAndRedirect, 150);
+        } else {
+          toast.error('Session verification timeout. Please try again.');
+        }
+      };
+      
+      setTimeout(checkAndRedirect, 200);
     }
   };
 
@@ -111,11 +128,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (success) {
       toast.success(successMessage);
       onClose();
-      // Use router.push with refresh to ensure proper session sync
-      setTimeout(() => {
-        router.push(targetUrl);
-        router.refresh();
-      }, 300);
+      
+      // Verify session exists before redirecting
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      const checkAndRedirect = async () => {
+        attempts++;
+        const { isAuthenticated } = await verifySession();
+        
+        if (isAuthenticated) {
+          window.location.href = targetUrl;
+          return;
+        }
+        
+        if (attempts < maxAttempts) {
+          setTimeout(checkAndRedirect, 150);
+        } else {
+          toast.error('Session verification timeout. Please try again.');
+        }
+      };
+      
+      setTimeout(checkAndRedirect, 200);
     }
   };
 
