@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { RecommendationsClient } from '@/components/recommendations/RecommendationsClient';
 
 export const metadata: Metadata = {
-  title: 'Adaptive AI Recommendations | CogniPath AI',
+  title: 'AI Recommendations',
   description: 'AI-prescribed skill trajectory and dynamic roadmap incorporation.',
 };
 

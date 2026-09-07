@@ -1,9 +1,24 @@
+import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { Lesson } from '@/lib/db/models/Lesson';
 import { generateLessonTask } from '@/lib/ai/tasks/generate-lesson';
 import { LearnClient, ClientLesson } from '@/components/learn/LearnClient';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ topicId: string }>;
+}): Promise<Metadata> {
+  const { topicId } = await params;
+  const name = topicId ? topicId.replace(/[-_]/g, ' ') : 'Lesson';
+  const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+  return {
+    title: `Monograph: ${formattedName}`,
+    description: `Comprehensive AI-synthesized architectural monograph for ${formattedName}.`,
+  };
+}
 
 export default async function LearnTopicPage({
   params,

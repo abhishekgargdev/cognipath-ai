@@ -1,0 +1,31 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cream Background -->
+  <rect width="1024" height="1024" rx="128" fill="#F9F7F2"/>
+  
+  <!-- Outer Academic Frame -->
+  <rect x="64" y="64" width="896" height="896" rx="96" fill="none" stroke="#8B2635" stroke-width="16" stroke-opacity="0.25"/>
+  <rect x="96" y="96" width="832" height="832" rx="72" fill="none" stroke="#8B2635" stroke-width="8" stroke-opacity="0.15"/>
+
+  <!-- Center Emblem: Monogram 'C' with AI Spark -->
+  <g transform="translate(512, 512)">
+    <!-- Main Crimson Circle Seal -->
+    <circle r="340" fill="#8B2635"/>
+    <circle r="310" fill="none" stroke="#F9F7F2" stroke-width="6" stroke-opacity="0.4"/>
+    
+    <!-- Serif 'C' Monogram -->
+    <path d="M 120 -150 C 70 -220 -30 -240 -110 -190 C -200 -130 -240 -10 -210 100 C -180 200 -60 250 50 220 C 120 200 170 140 180 80 L 80 80 C 70 110 40 140 -10 140 C -70 140 -120 90 -130 20 C -140 -60 -90 -140 -20 -150 C 40 -160 80 -120 100 -80 Z" fill="#F9F7F2"/>
+
+    <!-- AI Node Spark Accent -->
+    <g transform="translate(140, -110)">
+      <path d="M 0 -70 Q 0 0 70 0 Q 0 0 0 70 Q 0 0 -70 0 Q 0 0 0 -70 Z" fill="#F9F7F2"/>
+      <circle r="16" fill="#8B2635"/>
+    </g>
+
+    <!-- Node Connection Lines -->
+    <circle cx="-160" cy="-160" r="14" fill="#F9F7F2"/>
+    <circle cx="160" cy="160" r="14" fill="#F9F7F2"/>
+    <circle cx="-180" cy="120" r="12" fill="#F9F7F2" opacity="0.8"/>
+    <line x1="-160" y1="-160" x2="-100" y2="-100" stroke="#F9F7F2" stroke-width="6" stroke-opacity="0.6"/>
+    <line x1="160" y1="160" x2="100" y2="100" stroke="#F9F7F2" stroke-width="6" stroke-opacity="0.6"/>
+  </g>
+</svg>

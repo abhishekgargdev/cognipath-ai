@@ -55,8 +55,8 @@ class AIRouter {
       const redisKey = `gemini:quota:${keyIndex}:${this.getTodayDateKey()}`;
       await redis.set(redisKey, 1, { ex: 86400 });
       console.warn(`[AI Router] Gemini key index ${keyIndex} flagged as rate limited for date ${this.getTodayDateKey()}`);
-    } catch (err) {
-      console.warn('[AI Router] Failed to flag Gemini key in Redis:', err);
+    } catch {
+      // Upstash Redis connection unavailable or offline, skip remote flagging
     }
   }
 

@@ -1,3 +1,4 @@
+import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
@@ -6,6 +7,11 @@ import { RoadmapMilestone } from '@/lib/db/models/RoadmapMilestone';
 import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
 import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
 import { RoadmapClient, ClientRoadmapMilestone, ClientRoadmapNode } from '@/components/roadmap/RoadmapClient';
+
+export const metadata: Metadata = {
+  title: 'Topological Roadmap',
+  description: 'Interactive topological curriculum roadmap and milestone tracking.',
+};
 
 export default async function RoadmapPage() {
   const session = await auth();
