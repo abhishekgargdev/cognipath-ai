@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useUIStore } from '@/providers/ui-store';
 import { 
   Search, 
   Bell, 
@@ -7,41 +9,114 @@ import {
   Sun, 
   Moon, 
   Sparkles, 
-  Check, 
   ArrowRight,
   Menu,
   X
 } from 'lucide-react';
 
-interface TopbarProps {
-  onToggleMobileSidebar: () => void;
-  isMobileSidebarOpen: boolean;
+export interface TopbarUser {
+  name: string;
+  avatarUrl: string;
+  targetGoal: string;
+  overallMastery: number;
+  experienceLevel: string;
+  streakDays: number;
+  xp: number;
 }
+
+export interface TopbarNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  actionView?: string;
+}
+
+export interface TopbarProps {
+  onToggleMobileSidebar?: () => void;
+  isMobileSidebarOpen?: boolean;
+  user?: TopbarUser;
+  notifications?: TopbarNotification[];
+  adaptiveNotificationBanner?: string | null;
+  onDismissAdaptiveBanner?: () => void;
+  onNavigate?: (view: string) => void;
+}
+
+const defaultUser: TopbarUser = {
+  name: 'Scholar Candidate',
+  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  targetGoal: 'Full Stack Architect',
+  overallMastery: 42,
+  experienceLevel: 'Mid-Level',
+  streakDays: 18,
+  xp: 2450,
+};
+
+const defaultNotifications: TopbarNotification[] = [
+  {
+    id: 'notif-1',
+    title: 'New Diagnostic Practice Ready',
+    message: '5 daily exercises calibrated for Distributed Systems & Concurrency.',
+    timestamp: '10m ago',
+    read: false,
+    actionView: 'practice',
+  },
+  {
+    id: 'notif-2',
+    title: 'Remedial Monograph Injected',
+    message: 'Event Loop Microtask queuing topic review suggested.',
+    timestamp: '1h ago',
+    read: true,
+    actionView: 'learn',
+  },
+];
 
 export const Topbar: React.FC<TopbarProps> = ({ 
   onToggleMobileSidebar, 
-  isMobileSidebarOpen 
+  isMobileSidebarOpen: propsIsMobileSidebarOpen,
+  user = defaultUser,
+  notifications: initialNotifications = defaultNotifications,
+  adaptiveNotificationBanner: initialAdaptiveBanner = 'Telemetry detected microtask queue misconceptions. Remedial lesson available.',
+  onDismissAdaptiveBanner,
+  onNavigate,
 }) => {
   const { 
-    user, 
+    isSidebarOpen, 
+    toggleSidebar, 
     theme, 
     toggleTheme, 
-    notifications, 
-    markNotificationRead, 
-    setActiveView,
-    setIsSearchOpen,
-    adaptiveNotificationBanner,
-    dismissAdaptiveBanner
-  } = useApp();
+    setIsSearchOpen 
+  } = useUIStore();
 
+  const [notificationsList, setNotificationsList] = useState<TopbarNotification[]>(initialNotifications);
+  const [adaptiveBanner, setAdaptiveBanner] = useState<string | null>(initialAdaptiveBanner);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const isMobileSidebarOpen = propsIsMobileSidebarOpen !== undefined ? propsIsMobileSidebarOpen : isSidebarOpen;
+  const handleToggleSidebar = onToggleMobileSidebar || toggleSidebar;
+
+  const unreadCount = notificationsList.filter(n => !n.read).length;
+
+  const markNotificationRead = (id: string) => {
+    setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const markAllRead = () => {
+    setNotificationsList(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleDismissBanner = () => {
+    setAdaptiveBanner(null);
+    if (onDismissAdaptiveBanner) {
+      onDismissAdaptiveBanner();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#DCD9D1] dark:border-[#2C2A26] bg-[#F9F7F2]/95 dark:bg-[#121210]/95 backdrop-blur-sm">
       {/* Dynamic Adaptive Learning Alert Bar (Editorial Dispatch Style) */}
-      {adaptiveNotificationBanner && (
+      {adaptiveBanner && (
         <div 
           id="adaptive-path-banner"
           className="bg-[#EAE7DF] dark:bg-[#1A1916] border-b border-[#DCD9D1] dark:border-[#2C2A26] px-4 py-2 text-xs text-[#121212] dark:text-[#F4F2EC] flex items-center justify-between transition-all"
@@ -51,14 +126,14 @@ export const Topbar: React.FC<TopbarProps> = ({
               <Sparkles className="w-3 h-3 text-[#8B2635] dark:text-[#E08A95]" />
               ADAPTIVE DISPATCH
             </span>
-            <span className="truncate font-medium text-[#5C5852] dark:text-[#B5B1A7]">{adaptiveNotificationBanner}</span>
+            <span className="truncate font-medium text-[#5C5852] dark:text-[#B5B1A7]">{adaptiveBanner}</span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <button
               id="view-adaptive-changes-btn"
               onClick={() => {
-                setActiveView('roadmap');
-                dismissAdaptiveBanner();
+                if (onNavigate) onNavigate('roadmap');
+                handleDismissBanner();
               }}
               className="text-xs font-serif font-bold text-[#121212] dark:text-[#F4F2EC] hover:text-[#8B2635] dark:hover:text-[#E08A95] underline underline-offset-2 flex items-center gap-1 cursor-pointer"
             >
@@ -66,7 +141,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             </button>
             <button
               id="dismiss-adaptive-banner-btn"
-              onClick={dismissAdaptiveBanner}
+              onClick={handleDismissBanner}
               className="text-[#9E9A91] hover:text-[#121212] dark:hover:text-[#F4F2EC] p-0.5 cursor-pointer"
               aria-label="Dismiss banner"
             >
@@ -82,14 +157,14 @@ export const Topbar: React.FC<TopbarProps> = ({
         <div className="flex items-center gap-3">
           <button
             id="mobile-sidebar-toggle-btn"
-            onClick={onToggleMobileSidebar}
+            onClick={handleToggleSidebar}
             className="md:hidden p-2 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] text-[#121212] dark:text-[#F4F2EC] hover:bg-[#EAE7DF] dark:hover:bg-[#1F1E1A]"
             aria-label="Toggle Navigation Menu"
           >
             {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <div className="flex items-center gap-1.5 sm:hidden cursor-pointer" onClick={() => setActiveView('dashboard')}>
+          <div className="flex items-center gap-1.5 sm:hidden cursor-pointer" onClick={() => onNavigate?.('dashboard')}>
             <span className="font-serif font-black tracking-wider text-sm uppercase text-[#121212] dark:text-[#F4F2EC]">CogniPath</span>
             <span className="text-[9px] font-mono tracking-widest uppercase border border-[#8B2635]/40 bg-[#8B2635]/10 text-[#8B2635] dark:text-[#E08A95] px-1 py-0.2 rounded-xs font-bold">AI</span>
           </div>
@@ -120,11 +195,11 @@ export const Topbar: React.FC<TopbarProps> = ({
 
         {/* Right: Gamification, Theme, Notifications, Avatar */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Streak Badge (Wax Seal / Journal Consistency Stamp) */}
+          {/* Streak Badge */}
           <div 
             id="streak-indicator"
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#F4F1EA] dark:bg-[#1B1A16] text-[#121212] dark:text-[#F4F2EC] text-xs font-mono font-bold tracking-wider uppercase"
-            title="Daily Learning Streak: 18 consecutive days"
+            title={`Daily Learning Streak: ${user.streakDays} consecutive days`}
           >
             <Flame className="w-3.5 h-3.5 fill-[#8B2635] text-[#8B2635] dark:fill-[#E08A95] dark:text-[#E08A95]" />
             <span>{user.streakDays}D STREAK</span>
@@ -180,7 +255,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                     )}
                   </div>
                   <button 
-                    onClick={() => notifications.forEach(n => markNotificationRead(n.id))}
+                    onClick={markAllRead}
                     className="text-[11px] font-serif italic text-[#5C5852] hover:text-[#121212] dark:hover:text-[#F4F2EC] cursor-pointer"
                   >
                     Mark all read
@@ -188,12 +263,12 @@ export const Topbar: React.FC<TopbarProps> = ({
                 </div>
 
                 <div className="divide-y divide-[#DCD9D1]/60 dark:divide-[#2C2A26] max-h-80 overflow-y-auto mt-2">
-                  {notifications.map((notif) => (
+                  {notificationsList.map((notif) => (
                     <div
                       key={notif.id}
                       onClick={() => {
                         markNotificationRead(notif.id);
-                        if (notif.actionView) setActiveView(notif.actionView);
+                        if (notif.actionView && onNavigate) onNavigate(notif.actionView);
                         setShowNotifications(false);
                       }}
                       className={`py-3 px-2 rounded-xs text-left transition-colors cursor-pointer ${
@@ -214,10 +289,10 @@ export const Topbar: React.FC<TopbarProps> = ({
             )}
           </div>
 
-          {/* User Profile Avatar / Scholar Dossier Trigger */}
+          {/* User Profile Avatar */}
           <button
             id="user-profile-avatar-btn"
-            onClick={() => setActiveView('settings')}
+            onClick={() => onNavigate?.('settings')}
             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] hover:border-[#121212] dark:hover:border-[#F4F2EC] bg-[#FFFFFF] dark:bg-[#181714] transition-colors cursor-pointer shadow-xs"
           >
             <img

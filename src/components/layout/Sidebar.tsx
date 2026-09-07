@@ -1,6 +1,7 @@
+'use client';
+
 import React from 'react';
-import { useApp } from '../../context/AppContext';
-import { ViewMode } from '../../types';
+import { useUIStore } from '@/providers/ui-store';
 import {
   LayoutDashboard,
   Map,
@@ -16,26 +17,47 @@ import {
   X
 } from 'lucide-react';
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
+export interface SidebarUser {
+  name: string;
+  avatarUrl: string;
+  targetGoal: string;
+  overallMastery: number;
+  completedQuestionsToday: number;
+  totalQuestionsTargetToday: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const { 
-    activeView, 
-    setActiveView, 
-    user, 
-    aiRecommendations 
-  } = useApp();
+export interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+  activeView?: string;
+  user?: SidebarUser;
+  newRecommendationsCount?: number;
+  onNavigate?: (view: string) => void;
+}
 
-  const navItems: {
-    id: ViewMode;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badge?: string;
-    badgeColor?: string;
-  }[] = [
+const defaultUser: SidebarUser = {
+  name: 'Scholar Candidate',
+  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  targetGoal: 'Full Stack Architect',
+  overallMastery: 42,
+  completedQuestionsToday: 2,
+  totalQuestionsTargetToday: 5,
+};
+
+export const Sidebar: React.FC<SidebarProps> = ({
+  isOpen: propsIsOpen,
+  onClose: propsOnClose,
+  activeView = 'dashboard',
+  user = defaultUser,
+  newRecommendationsCount = 3,
+  onNavigate,
+}) => {
+  const { isSidebarOpen, setSidebarOpen } = useUIStore();
+
+  const isOpen = propsIsOpen !== undefined ? propsIsOpen : isSidebarOpen;
+  const handleClose = propsOnClose || (() => setSidebarOpen(false));
+
+  const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'roadmap', label: 'My Roadmap', icon: Map },
     { id: 'learn', label: 'Learn', icon: BookOpen },
@@ -52,15 +74,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       id: 'recommendations', 
       label: 'AI Recommendations', 
       icon: Sparkles,
-      badge: `${aiRecommendations.filter(r => !r.addedToRoadmap).length} new`,
+      badge: `${newRecommendationsCount} new`,
       badgeColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-300'
     },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
-  const handleNavClick = (viewId: ViewMode) => {
-    setActiveView(viewId);
-    onClose();
+  const handleNavClick = (viewId: string) => {
+    if (onNavigate) {
+      onNavigate(viewId);
+    }
+    handleClose();
   };
 
   return (
@@ -69,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {isOpen && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 md:hidden"
-          onClick={onClose}
+          onClick={handleClose}
         />
       )}
 
@@ -106,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
           {/* Close button on mobile */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="md:hidden p-1.5 rounded-xs text-[#5C5852] hover:text-[#121212] dark:text-[#9E9A91] dark:hover:text-[#F4F2EC] hover:bg-[#EAE7DF] dark:hover:bg-[#201F1B] transition-colors cursor-pointer shrink-0 ml-2"
             aria-label="Close navigation"
           >
