@@ -1,33 +1,41 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
-import { 
-  CareerGoal, 
-  ExperienceLevel, 
-  SkillProficiency 
-} from '../../types';
-import { 
-  ArrowRight, 
-  ArrowLeft, 
-  Check, 
-  Sparkles, 
-  Clock, 
-  Target, 
-  Layers, 
-  Code2, 
-  Briefcase, 
+import { useRouter } from 'next/navigation';
+import {
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Clock,
   X,
   BrainCircuit,
-  Bot
 } from 'lucide-react';
-import { mockSkillsCatalog } from '../../data/mockData';
+import { defaultSkillsCatalog } from '@/lib/data/skills-catalog';
 
-const GOAL_OPTIONS: { id: CareerGoal; label: string; icon: string; desc: string }[] = [
+type CareerGoal =
+  | 'Full Stack Developer'
+  | 'AI Engineer'
+  | 'Backend Engineer'
+  | 'Frontend Developer'
+  | 'Technical Interview Preparation'
+  | 'Software Engineer'
+  | string;
+
+type ExperienceLevel = 'Complete Beginner' | 'Beginner' | 'Intermediate' | 'Advanced';
+
+interface SkillProficiency {
+  skillId: string;
+  name: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+}
+
+const GOAL_OPTIONS: { id: string; label: string; icon: string; desc: string }[] = [
   { id: 'Full Stack Developer', label: 'Full Stack Engineer', icon: '💻', desc: 'React, Node.js, relational schema design, APIs, and modern distributed architecture.' },
   { id: 'AI Engineer', label: 'AI Systems Engineer', icon: '🤖', desc: 'LLM pipelines, RAG architecture, cognitive agents, Python, and model inference.' },
   { id: 'Backend Engineer', label: 'Backend Architect', icon: '⚙️', desc: 'High-throughput APIs, distributed concurrency, SQL tuning, and microservices.' },
   { id: 'Frontend Developer', label: 'Frontend Specialist', icon: '🎨', desc: 'Modern React, Next.js, render lifecycle performance, and responsive interfaces.' },
   { id: 'Technical Interview Preparation', label: 'Technical Interview Prep', icon: '🎯', desc: 'DSA, Big-O asymptotic analysis, system design blueprints, and mock reviews.' },
-  { id: 'Software Engineer', label: 'Software Engineer', icon: '🚀', desc: 'Core programming, architectural paradigms, clean design, and cloud toolchains.' }
+  { id: 'Software Engineer', label: 'Software Engineer', icon: '🚀', desc: 'Core programming, architectural paradigms, clean design, and cloud toolchains.' },
 ];
 
 const REASON_OPTIONS = [
@@ -36,7 +44,7 @@ const REASON_OPTIONS = [
   'Attain promotion to Senior Staff Architect',
   'Build and deploy independent software products',
   'Prepare for rigorous technical examinations',
-  'Deepen fundamental architectural scholarship'
+  'Deepen fundamental architectural scholarship',
 ];
 
 const TIME_OPTIONS = [
@@ -44,7 +52,7 @@ const TIME_OPTIONS = [
   { minutes: 30, label: '30 mins / day', desc: 'Recommended equilibrium', recommended: true },
   { minutes: 45, label: '45 mins / day', desc: 'Accelerated acquisition' },
   { minutes: 60, label: '1 hour / day', desc: 'Rigorous immersion' },
-  { minutes: 120, label: '2+ hours / day', desc: 'Full-time dedicated study' }
+  { minutes: 120, label: '2+ hours / day', desc: 'Full-time dedicated study' },
 ];
 
 const PREFERENCE_OPTIONS = [
@@ -55,11 +63,11 @@ const PREFERENCE_OPTIONS = [
   'Diagnostic Debugging',
   'Industrial Case Studies',
   'Rigorous Technical Inquiries',
-  'Structural Code Reviews'
+  'Structural Code Reviews',
 ];
 
-export const OnboardingFlow: React.FC = () => {
-  const { finishOnboarding } = useApp();
+export default function OnboardingPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const totalSteps = 6;
 
@@ -70,7 +78,7 @@ export const OnboardingFlow: React.FC = () => {
     { skillId: 'js', name: 'JavaScript', level: 'Intermediate' },
     { skillId: 'react', name: 'React', level: 'Intermediate' },
     { skillId: 'nodejs', name: 'Node.js', level: 'Beginner' },
-    { skillId: 'sql', name: 'SQL & PostgreSQL', level: 'Beginner' }
+    { skillId: 'sql', name: 'SQL & PostgreSQL', level: 'Beginner' },
   ]);
   const [skillCategoryFilter, setSkillCategoryFilter] = useState<string>('All');
   const [commaSkillsInput, setCommaSkillsInput] = useState<string>('');
@@ -81,53 +89,80 @@ export const OnboardingFlow: React.FC = () => {
     'Concept Treatises',
     'Interactive Coding',
     'Diagnostic Debugging',
-    'Architectural Schematics'
+    'Architectural Schematics',
   ]);
 
-  // AI Generation Simulation State
+  // Submission & Generation State
   const [generationStep, setGenerationStep] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const generationLog = [
     'Analyzing target role: ' + (customGoal || selectedGoal) + '...',
     'Mapping selected skills and calculating prerequisite DAG...',
+    'Invoking CogniPath AI Abstraction Layer for roadmap synthesis...',
     'Benchmarking current experience level & strengths...',
-    'Detecting critical foundational dependencies...',
-    'Sequencing 28 modular learning topics...',
-    'Calibrating daily 5-question adaptive practice engine...',
-    'Personalized AI learning roadmap generated!'
+    'Sequencing modular learning nodes & milestones...',
+    'Persisting user syllabus profile & node progress to MongoDB...',
+    'Personalized AI learning roadmap successfully generated!',
   ];
 
   useEffect(() => {
-    if (currentStep === 6) {
+    if (currentStep === 6 && !isSubmitting) {
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      // Animate progress log while triggering API submit
       const interval = setInterval(() => {
-        setGenerationStep(prev => {
-          if (prev < generationLog.length - 1) {
-            return prev + 1;
-          } else {
-            clearInterval(interval);
-            setTimeout(() => {
-              finishOnboarding({
-                targetGoal: customGoal ? customGoal : selectedGoal,
-                experienceLevel: overallExperience,
-                selectedSkills,
-                learningReason: selectedReason,
-                dailyCommitmentMinutes: dailyMinutes,
-                learningPreferences: preferences
-              });
-            }, 1200);
-            return prev;
+        setGenerationStep((prev) => (prev < generationLog.length - 2 ? prev + 1 : prev));
+      }, 800);
+
+      const submitOnboarding = async () => {
+        try {
+          const res = await fetch('/api/onboarding/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetGoal: selectedGoal,
+              customGoal,
+              experienceLevel: overallExperience,
+              selectedSkills,
+              learningReason: selectedReason,
+              dailyCommitmentMinutes: dailyMinutes,
+              learningPreferences: preferences,
+            }),
+          });
+
+          clearInterval(interval);
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to complete onboarding');
           }
-        });
-      }, 700);
+
+          setGenerationStep(generationLog.length - 1);
+
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 1200);
+        } catch (err: any) {
+          clearInterval(interval);
+          setIsSubmitting(false);
+          setSubmitError(err.message || 'An error occurred during roadmap generation.');
+        }
+      };
+
+      submitOnboarding();
 
       return () => clearInterval(interval);
     }
-  }, [currentStep, generationLog.length, customGoal, selectedGoal, overallExperience, selectedSkills, selectedReason, dailyMinutes, preferences, finishOnboarding]);
+  }, [currentStep, isSubmitting, customGoal, selectedGoal, overallExperience, selectedSkills, selectedReason, dailyMinutes, preferences, generationLog.length, router]);
 
   const toggleSkill = (skillId: string, skillName: string) => {
-    if (selectedSkills.some(s => s.skillId === skillId)) {
-      setSelectedSkills(prev => prev.filter(s => s.skillId !== skillId));
+    if (selectedSkills.some((s) => s.skillId === skillId)) {
+      setSelectedSkills((prev) => prev.filter((s) => s.skillId !== skillId));
     } else {
-      setSelectedSkills(prev => [...prev, { skillId, name: skillName, level: 'Beginner' }]);
+      setSelectedSkills((prev) => [...prev, { skillId, name: skillName, level: 'Beginner' }]);
     }
   };
 
@@ -135,19 +170,19 @@ export const OnboardingFlow: React.FC = () => {
     if (!commaSkillsInput.trim()) return;
     const items = commaSkillsInput
       .split(',')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
-    setSelectedSkills(prev => {
+    setSelectedSkills((prev) => {
       const next = [...prev];
-      items.forEach(rawName => {
-        const exists = next.some(s => s.name.toLowerCase() === rawName.toLowerCase());
+      items.forEach((rawName) => {
+        const exists = next.some((s) => s.name.toLowerCase() === rawName.toLowerCase());
         if (!exists) {
-          const match = mockSkillsCatalog.find(cs => cs.name.toLowerCase() === rawName.toLowerCase());
+          const match = defaultSkillsCatalog.find((cs) => cs.name.toLowerCase() === rawName.toLowerCase());
           next.push({
             skillId: match ? match.id : `custom-${rawName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now()}`,
             name: match ? match.name : rawName,
-            level: 'Beginner'
+            level: 'Beginner',
           });
         }
       });
@@ -157,28 +192,29 @@ export const OnboardingFlow: React.FC = () => {
   };
 
   const updateSkillLevel = (skillId: string, level: 'Beginner' | 'Intermediate' | 'Advanced') => {
-    setSelectedSkills(prev =>
-      prev.map(s => (s.skillId === skillId ? { ...s, level } : s))
+    setSelectedSkills((prev) =>
+      prev.map((s) => (s.skillId === skillId ? { ...s, level } : s))
     );
   };
 
   const togglePreference = (pref: string) => {
-    setPreferences(prev =>
-      prev.includes(pref) ? prev.filter(p => p !== pref) : [...prev, pref]
+    setPreferences((prev) =>
+      prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]
     );
   };
 
   const categories = ['All', 'Programming', 'Frontend', 'Backend', 'Databases', 'Engineering', 'AI'];
-  const filteredCatalog = skillCategoryFilter === 'All'
-    ? mockSkillsCatalog
-    : mockSkillsCatalog.filter(s => s.category === skillCategoryFilter);
+  const filteredCatalog =
+    skillCategoryFilter === 'All'
+      ? defaultSkillsCatalog
+      : defaultSkillsCatalog.filter((s) => s.category === skillCategoryFilter);
 
   return (
-    <div 
+    <div
       id="onboarding-container"
       className="min-h-screen bg-[#F9F7F2] dark:bg-[#121210] text-[#121212] dark:text-[#F4F2EC] flex flex-col justify-between p-4 sm:p-8 selection:bg-[#EAE7DF]"
     >
-      {/* Top Bar: CogniPath AI brand & Step Progress */}
+      {/* Top Bar */}
       <div className="max-w-4xl w-full mx-auto flex items-center justify-between pb-6 border-b border-[#DCD9D1] dark:border-[#2C2A26]">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xs border border-[#121212] dark:border-[#F4F2EC] bg-[#121212] dark:bg-[#F4F2EC] flex items-center justify-center text-white dark:text-[#121212] shadow-xs">
@@ -213,7 +249,7 @@ export const OnboardingFlow: React.FC = () => {
 
       {/* Main Step Content */}
       <div className="max-w-3xl w-full mx-auto my-auto py-8">
-        {/* STEP 1: What do you want to become? */}
+        {/* STEP 1 */}
         {currentStep === 1 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
@@ -260,7 +296,6 @@ export const OnboardingFlow: React.FC = () => {
               })}
             </div>
 
-            {/* Custom Goal Input */}
             <div className="pt-2">
               <label className="block text-xs font-serif font-bold text-[#5C5852] dark:text-[#A6A299] mb-1.5">
                 Or designate a custom technical archetype:
@@ -280,7 +315,7 @@ export const OnboardingFlow: React.FC = () => {
           </div>
         )}
 
-        {/* STEP 2: Choose Skills */}
+        {/* STEP 2 */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
@@ -295,7 +330,6 @@ export const OnboardingFlow: React.FC = () => {
               </p>
             </div>
 
-            {/* Selected Chips Bar */}
             {selectedSkills.length > 0 && (
               <div className="p-3 rounded-xs bg-[#FFFFFF] dark:bg-[#181714] border border-[#DCD9D1] dark:border-[#2C2A26] flex flex-wrap gap-2 items-center">
                 <span className="text-xs font-mono uppercase tracking-wider text-[#5C5852] dark:text-[#9E9A91] font-bold mr-1">
@@ -308,6 +342,7 @@ export const OnboardingFlow: React.FC = () => {
                   >
                     {s.name}
                     <button
+                      type="button"
                       onClick={() => toggleSkill(s.skillId, s.name)}
                       className="text-[#8B2635] dark:text-[#E08A95] hover:text-[#121212] dark:hover:text-white cursor-pointer"
                     >
@@ -318,7 +353,6 @@ export const OnboardingFlow: React.FC = () => {
               </div>
             )}
 
-            {/* Quick Add Skills (Comma-Separated) */}
             <div className="p-3.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] space-y-2">
               <label className="text-xs font-serif font-bold text-[#121212] dark:text-[#F4F2EC] flex items-center justify-between">
                 <span>Quick Add Skills (Comma-Separated):</span>
@@ -350,11 +384,11 @@ export const OnboardingFlow: React.FC = () => {
               </div>
             </div>
 
-            {/* Category Filter Tabs */}
             <div className="flex flex-wrap gap-1.5 pb-2">
               {categories.map((cat) => (
                 <button
                   key={cat}
+                  type="button"
                   onClick={() => setSkillCategoryFilter(cat)}
                   className={`px-3 py-1.5 rounded-xs text-xs font-serif font-bold transition-colors border ${
                     skillCategoryFilter === cat
@@ -367,10 +401,9 @@ export const OnboardingFlow: React.FC = () => {
               ))}
             </div>
 
-            {/* Skills Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
               {filteredCatalog.map((skill) => {
-                const isSelected = selectedSkills.some(s => s.skillId === skill.id);
+                const isSelected = selectedSkills.some((s) => s.skillId === skill.id);
                 return (
                   <div
                     key={skill.id}
@@ -402,7 +435,7 @@ export const OnboardingFlow: React.FC = () => {
           </div>
         )}
 
-        {/* STEP 3: Experience Level & Per-Skill Self Assessment */}
+        {/* STEP 3 */}
         {currentStep === 3 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
@@ -417,11 +450,11 @@ export const OnboardingFlow: React.FC = () => {
               </p>
             </div>
 
-            {/* Overall Level */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {(['Complete Beginner', 'Beginner', 'Intermediate', 'Advanced'] as ExperienceLevel[]).map((lvl) => (
                 <button
                   key={lvl}
+                  type="button"
                   onClick={() => setOverallExperience(lvl)}
                   className={`p-3.5 rounded-xs border text-center transition-all ${
                     overallExperience === lvl
@@ -434,7 +467,6 @@ export const OnboardingFlow: React.FC = () => {
               ))}
             </div>
 
-            {/* Optional Per-Skill Calibration */}
             <div className="space-y-2">
               <label className="block text-xs font-serif font-bold text-[#121212] dark:text-[#F4F2EC]">
                 Calibrate baseline tier for chosen competencies:
@@ -466,7 +498,7 @@ export const OnboardingFlow: React.FC = () => {
           </div>
         )}
 
-        {/* STEP 4: Learning Goal / Motivation */}
+        {/* STEP 4 */}
         {currentStep === 4 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
@@ -507,7 +539,7 @@ export const OnboardingFlow: React.FC = () => {
           </div>
         )}
 
-        {/* STEP 5: Time Commitment & Learning Preferences */}
+        {/* STEP 5 */}
         {currentStep === 5 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
@@ -577,7 +609,7 @@ export const OnboardingFlow: React.FC = () => {
           </div>
         )}
 
-        {/* STEP 6: AI Roadmap Generation Screen */}
+        {/* STEP 6 */}
         {currentStep === 6 && (
           <div className="space-y-6 text-center max-w-lg mx-auto py-6 animate-in fade-in duration-300">
             <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
@@ -591,32 +623,49 @@ export const OnboardingFlow: React.FC = () => {
                 Synthesizing Curricular Blueprint
               </h2>
               <p className="text-xs font-serif italic text-[#5C5852] dark:text-[#A6A299] mt-1">
-                The CogniPath engine is resolving prerequisite graphs and building your customized daily path.
+                The CogniPath AI engine is generating your customized daily learning roadmap.
               </p>
             </div>
 
-            {/* Terminal / Live Analysis Logs */}
-            <div className="p-4 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] text-left font-mono text-xs space-y-2 shadow-xs">
-              {generationLog.map((log, index) => {
-                if (index > generationStep) return null;
-                const isCurrent = index === generationStep;
-                return (
-                  <div
-                    key={log}
-                    className={`flex items-center gap-2 ${
-                      isCurrent ? 'text-[#8B2635] dark:text-[#E08A95] font-bold' : 'text-[#5C5852] dark:text-[#9E9A91]'
-                    }`}
-                  >
-                    {index < generationStep ? (
-                      <Check className="w-3.5 h-3.5 text-[#1F3A2B] dark:text-[#4E876A] shrink-0" />
-                    ) : (
-                      <div className="w-3.5 h-3.5 rounded-full border-2 border-[#8B2635] dark:border-[#E08A95] border-t-transparent animate-spin shrink-0" />
-                    )}
-                    <span className="truncate">{log}</span>
-                  </div>
-                );
-              })}
-            </div>
+            {submitError && (
+              <div className="p-4 rounded-xs bg-[#8B2635]/10 border border-[#8B2635] text-[#8B2635] text-xs font-serif text-left">
+                <p className="font-bold">Roadmap Generation Failed</p>
+                <p className="mt-1">{submitError}</p>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(5)}
+                  className="mt-3 px-3 py-1 bg-[#8B2635] text-white rounded-xs font-serif font-bold text-xs"
+                >
+                  Return to Edit Options
+                </button>
+              </div>
+            )}
+
+            {!submitError && (
+              <div className="p-4 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] text-left font-mono text-xs space-y-2 shadow-xs">
+                {generationLog.map((log, index) => {
+                  if (index > generationStep) return null;
+                  const isCurrent = index === generationStep;
+                  return (
+                    <div
+                      key={log}
+                      className={`flex items-center gap-2 ${
+                        isCurrent
+                          ? 'text-[#8B2635] dark:text-[#E08A95] font-bold'
+                          : 'text-[#5C5852] dark:text-[#9E9A91]'
+                      }`}
+                    >
+                      {index < generationStep ? (
+                        <Check className="w-3.5 h-3.5 text-[#1F3A2B] dark:text-[#4E876A] shrink-0" />
+                      ) : (
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-[#8B2635] dark:border-[#E08A95] border-t-transparent animate-spin shrink-0" />
+                      )}
+                      <span className="truncate">{log}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -626,7 +675,7 @@ export const OnboardingFlow: React.FC = () => {
         <div className="max-w-3xl w-full mx-auto flex items-center justify-between pt-6 border-t border-[#DCD9D1] dark:border-[#2C2A26]">
           <button
             type="button"
-            onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+            onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))}
             disabled={currentStep === 1}
             className={`flex items-center gap-2 px-4 py-2 rounded-xs text-xs font-serif font-bold text-[#5C5852] dark:text-[#A6A299] hover:text-[#121212] dark:hover:text-[#F4F2EC] transition-colors cursor-pointer ${
               currentStep === 1 ? 'opacity-0 pointer-events-none' : ''
@@ -639,7 +688,7 @@ export const OnboardingFlow: React.FC = () => {
           <button
             type="button"
             id="onboarding-next-step-btn"
-            onClick={() => setCurrentStep(prev => prev + 1)}
+            onClick={() => setCurrentStep((prev) => prev + 1)}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs transition-all shadow-xs border border-[#121212] dark:border-[#F4F2EC] cursor-pointer"
           >
             <span>{currentStep === 5 ? 'Synthesize Syllabus' : 'Proceed'}</span>
@@ -649,4 +698,4 @@ export const OnboardingFlow: React.FC = () => {
       )}
     </div>
   );
-};
+}
