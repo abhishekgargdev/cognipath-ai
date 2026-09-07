@@ -10,6 +10,7 @@ import {
   X,
   BrainCircuit,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { defaultSkillsCatalog } from '@/lib/data/skills-catalog';
 
 type CareerGoal =
@@ -141,6 +142,7 @@ export function OnboardingClient() {
           }
 
           setGenerationStep(generationLog.length - 1);
+          toast.success('Curricular blueprint successfully synthesized!');
 
           setTimeout(() => {
             router.push('/dashboard');
@@ -148,7 +150,9 @@ export function OnboardingClient() {
         } catch (err: any) {
           clearInterval(interval);
           setIsSubmitting(false);
-          setSubmitError(err.message || 'An error occurred during roadmap generation.');
+          const errorMsg = err.message || 'An error occurred during roadmap generation.';
+          setSubmitError(errorMsg);
+          toast.error(errorMsg);
         }
       };
 

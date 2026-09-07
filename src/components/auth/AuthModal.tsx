@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { X, Sparkles, ArrowRight, UserCheck } from 'lucide-react';
+import { toast } from 'sonner';
 
 export interface AuthModalProps {
   isOpen: boolean;
@@ -15,6 +17,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   initialMode = 'login',
 }) => {
+  const router = useRouter();
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,26 +28,72 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
+  const performSignIn = async (signInEmail: string, signInPassword: string, signInName: string) => {
+    try {
+      setIsLoading(true);
+      const result = await signIn('credentials', {
+        email: signInEmail.trim(),
+        password: signInPassword,
+        name: signInName,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error('Authentication failed. Please verify your credentials.');
+        setIsLoading(false);
+        return false;
+      }
+
+      if (!result?.ok) {
+        toast.error('Authentication failed. Please try again.');
+        setIsLoading(false);
+        return false;
+      }
+
+      return true;
+    } catch (err: any) {
+      setIsLoading(false);
+      toast.error(err?.message || 'An error occurred during authentication.');
+      return false;
+    }
+  };
+
   const handleDemoSignIn = async () => {
-    setIsLoading(true);
-    await signIn('credentials', {
-      email: email || 'demo@cognipath.ai',
-      callbackUrl: '/',
-    });
-    setIsLoading(false);
-    onClose();
+    const success = await performSignIn(
+      email || 'demo@cognipath.ai',
+      password,
+      name
+    );
+    
+    if (success) {
+      toast.success('Authenticated! Navigating to Mission Control...');
+      onClose();
+      // Use router.push which respects Next.js navigation patterns
+      setTimeout(() => {
+        router.push('/dashboard');
+        // Also refresh to ensure session is fully synced
+        router.refresh();
+      }, 300);
+    }
   };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await signIn('google', { callbackUrl: '/' });
+    toast.info('Connecting to Google Identity...');
+    // Let signIn handle the full redirect
+    await signIn('google', {
+      callbackUrl: '/onboarding',
+      redirect: true,
+    });
     setIsLoading(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (isForgotPassword) {
       setSubmittedMessage(`Password reset link dispatched to ${email || 'your email'}.`);
+      toast.success('Password recovery link dispatched.');
       setTimeout(() => {
         setIsForgotPassword(false);
         setSubmittedMessage(null);
@@ -52,7 +101,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    handleDemoSignIn();
+    const targetUrl = authModalMode === 'signup' ? '/onboarding' : '/dashboard';
+    const successMessage = authModalMode === 'signup'
+      ? 'Scholar Account Established! Initializing onboarding...'
+      : 'Credentials Verified! Entering Mission Control...';
+
+    const success = await performSignIn(email, password, name);
+
+    if (success) {
+      toast.success(successMessage);
+      onClose();
+      // Use router.push with refresh to ensure proper session sync
+      setTimeout(() => {
+        router.push(targetUrl);
+        router.refresh();
+      }, 300);
+    }
   };
 
   return (
@@ -258,3 +322,4 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     </div>
   );
 };
+

@@ -13,6 +13,7 @@ import {
   X,
   HelpCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export interface ClientLessonSection {
   id: string;
@@ -73,6 +74,14 @@ export function LearnClient({ lesson }: LearnClientProps) {
 
   const handleSelectOption = (questionId: string, optionIndex: number) => {
     setSelectedAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
+    const kc = lesson.knowledgeCheck?.find((q) => q.id === questionId);
+    if (kc) {
+      if (optionIndex === kc.correctIndex) {
+        toast.success('Correct answer!');
+      } else {
+        toast.error('Incorrect option. Review explanation below.');
+      }
+    }
   };
 
   const handleStartPractice = () => {

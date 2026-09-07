@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import { LandingClient } from '@/components/landing/LandingClient';
 
 export const metadata: Metadata = {
@@ -6,6 +8,11 @@ export const metadata: Metadata = {
   description: 'Master software engineering through AI-synthesized syllabi, sandboxed coding challenges, and real-time diagnostic evaluation.',
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+  if (session?.user) {
+    redirect('/dashboard');
+  }
+
   return <LandingClient />;
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Pagination } from '@/components/common/Pagination';
 import {
   Check,
@@ -102,7 +103,9 @@ export function RoadmapClient({ user, milestones: initialMilestones }: RoadmapCl
 
     const targetNode = allNodes.find((n) => n.id === nodeId);
     if (targetNode?.status === 'locked') {
-      setPatchError('Cannot complete subtopics on a locked node. Prerequisites must be completed first.');
+      const errMsg = 'Cannot complete subtopics on a locked node. Prerequisites must be completed first.';
+      setPatchError(errMsg);
+      toast.error(errMsg);
       setUpdatingSubtopicId(null);
       return;
     }
@@ -120,6 +123,7 @@ export function RoadmapClient({ user, milestones: initialMilestones }: RoadmapCl
       }
 
       const { node: updatedNode, userProgress } = await res.json();
+      toast.success(currentCompleted ? 'Subtopic marked as pending.' : 'Subtopic completed! Mastery updated.');
 
       // Update state locally
       setMilestones((prevMilestones) =>

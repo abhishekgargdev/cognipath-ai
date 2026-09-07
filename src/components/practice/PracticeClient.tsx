@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 import {
   CheckCircle2,
   Clock,
@@ -182,8 +183,14 @@ export function PracticeClient() {
         message: data.message,
         results: data.results || [],
       });
+      if (data.passed) {
+        toast.success('Test suite executed: All visible test cases passed!');
+      } else {
+        toast.warning('Test suite executed: Some visible test cases failed.');
+      }
     } catch (err) {
       console.error('Error running test cases:', err);
+      toast.error('Execution error in sandboxed runner.');
       setTestOutput({
         passed: false,
         message: 'Execution error occurred in sandbox runner',
@@ -217,14 +224,18 @@ export function PracticeClient() {
       setEvaluationResult(evalData);
 
       if (evalData.passed) {
+        toast.success('Exercise passed! XP & mastery index updated.');
         confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
         setUserStats((prev) => ({
           ...prev,
           completedQuestionsToday: Math.min(prev.totalQuestionsTargetToday, prev.completedQuestionsToday + 1),
         }));
+      } else {
+        toast.error('Diagnostic evaluation generated: Revision recommended.');
       }
     } catch (err) {
       console.error('Error submitting answer:', err);
+      toast.error('Submission failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

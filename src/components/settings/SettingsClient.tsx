@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/providers/ui-store';
 import { LoadingSpinner } from '@/components/common';
+import { toast } from 'sonner';
 
 export function SettingsClient() {
   const router = useRouter();
@@ -71,10 +72,14 @@ export function SettingsClient() {
 
       if (res.ok) {
         setSaveSuccess(true);
+        toast.success('Dossier preferences successfully committed');
         setTimeout(() => setSaveSuccess(false), 2500);
+      } else {
+        toast.error('Failed to update dossier preferences');
       }
     } catch (err) {
       console.error('Failed to save settings:', err);
+      toast.error('An unexpected error occurred while saving preferences');
     } finally {
       setIsSaving(false);
     }

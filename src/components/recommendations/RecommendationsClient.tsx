@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   CheckCircle2,
   ArrowRight,
@@ -69,9 +70,13 @@ export function RecommendationsClient() {
             r.id === recId ? { ...r, status: 'accepted', addedToRoadmap: true } : r
           )
         );
+        toast.success('Recommendation accepted! Node incorporated into active syllabus.');
+      } else {
+        toast.error('Failed to incorporate recommendation.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to accept recommendation:', err);
+      toast.error(err?.message || 'Failed to accept recommendation.');
     } finally {
       setAcceptingId(null);
     }
