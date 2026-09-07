@@ -1,21 +1,50 @@
-import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
-import { X, Sparkles, ArrowRight } from 'lucide-react';
+'use client';
 
-export const AuthModal: React.FC = () => {
-  const { showAuthModal, setShowAuthModal, authModalMode, setAuthModalMode, setUser } = useApp();
+import React, { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { X, Sparkles, ArrowRight, UserCheck } from 'lucide-react';
+
+export interface AuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialMode?: 'login' | 'signup';
+}
+
+export const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  initialMode = 'login',
+}) => {
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  if (!showAuthModal) return null;
+  if (!isOpen) return null;
+
+  const handleDemoSignIn = async () => {
+    setIsLoading(true);
+    await signIn('credentials', {
+      email: email || 'demo@cognipath.ai',
+      callbackUrl: '/',
+    });
+    setIsLoading(false);
+    onClose();
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    await signIn('google', { callbackUrl: '/' });
+    setIsLoading(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isForgotPassword) {
-      setSubmittedMessage(`Password reset link sent to ${email || 'your email'}.`);
+      setSubmittedMessage(`Password reset link dispatched to ${email || 'your email'}.`);
       setTimeout(() => {
         setIsForgotPassword(false);
         setSubmittedMessage(null);
@@ -23,26 +52,14 @@ export const AuthModal: React.FC = () => {
       return;
     }
 
-    // Fast local demo login
-    if (name) {
-      setUser(prev => ({ ...prev, name, email: email || prev.email }));
-    }
-    setShowAuthModal(false);
-  };
-
-  const handleOAuth = (provider: 'Google' | 'GitHub') => {
-    setUser(prev => ({
-      ...prev,
-      name: provider === 'Google' ? 'Alex Rivera (Google)' : 'Alex Rivera (GitHub)'
-    }));
-    setShowAuthModal(false);
+    handleDemoSignIn();
   };
 
   return (
     <div 
       id="auth-modal-backdrop"
       className="fixed inset-0 z-50 bg-[#121212]/60 backdrop-blur-xs flex items-center justify-center p-4"
-      onClick={() => setShowAuthModal(false)}
+      onClick={onClose}
     >
       <div 
         id="auth-modal-card"
@@ -51,8 +68,9 @@ export const AuthModal: React.FC = () => {
       >
         <button
           id="close-auth-modal-btn"
-          onClick={() => setShowAuthModal(false)}
+          onClick={onClose}
           className="absolute top-4 right-4 text-[#9E9A91] hover:text-[#121212] dark:hover:text-[#F4F2EC] p-1 cursor-pointer"
+          aria-label="Close modal"
         >
           <X className="w-5 h-5" />
         </button>
@@ -82,13 +100,15 @@ export const AuthModal: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* OAuth Quick Options */}
+            {/* Primary Auth Actions: Google & Quick Demo */}
             {!isForgotPassword && (
-              <div className="space-y-2 mb-5">
+              <div className="space-y-2.5 mb-5">
                 <button
                   type="button"
-                  onClick={() => handleOAuth('Google')}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#151412] hover:bg-[#F4F1EA] dark:hover:bg-[#201F1B] text-[#121212] dark:text-[#F4F2EC] font-serif text-xs font-bold transition-colors cursor-pointer"
+                  id="google-signin-btn"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#151412] hover:bg-[#F4F1EA] dark:hover:bg-[#201F1B] text-[#121212] dark:text-[#F4F2EC] font-serif text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -101,13 +121,13 @@ export const AuthModal: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => handleOAuth('GitHub')}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#151412] hover:bg-[#F4F1EA] dark:hover:bg-[#201F1B] text-[#121212] dark:text-[#F4F2EC] font-serif text-xs font-bold transition-colors cursor-pointer"
+                  id="demo-signin-btn"
+                  onClick={handleDemoSignIn}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xs border border-[#8B2635]/40 bg-[#8B2635]/10 hover:bg-[#8B2635]/20 text-[#8B2635] dark:text-[#E08A95] font-serif text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                  </svg>
-                  Authenticate via GitHub
+                  <UserCheck className="w-4 h-4 text-[#8B2635] dark:text-[#E08A95]" />
+                  Continue as Demo Scholar
                 </button>
 
                 <div className="relative my-4">
@@ -123,7 +143,7 @@ export const AuthModal: React.FC = () => {
               </div>
             )}
 
-            {/* Email / Password Form */}
+            {/* Email Form */}
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {authModalMode === 'signup' && !isForgotPassword && (
                 <div>
@@ -165,7 +185,7 @@ export const AuthModal: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setIsForgotPassword(true)}
-                        className="text-[11px] font-serif italic text-[#8B2635] dark:text-[#E08A95] hover:underline"
+                        className="text-[11px] font-serif italic text-[#8B2635] dark:text-[#E08A95] hover:underline cursor-pointer"
                       >
                         Recover credential?
                       </button>
@@ -184,7 +204,8 @@ export const AuthModal: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-2 border border-[#121212] dark:border-[#F4F2EC]"
+                disabled={isLoading}
+                className="w-full py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-2 border border-[#121212] dark:border-[#F4F2EC] disabled:opacity-50"
               >
                 <span>
                   {isForgotPassword
@@ -203,7 +224,7 @@ export const AuthModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsForgotPassword(false)}
-                  className="text-[#8B2635] dark:text-[#E08A95] font-serif font-bold hover:underline"
+                  className="text-[#8B2635] dark:text-[#E08A95] font-serif font-bold hover:underline cursor-pointer"
                 >
                   Return to sign in
                 </button>
@@ -213,7 +234,7 @@ export const AuthModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setAuthModalMode('signup')}
-                    className="text-[#8B2635] dark:text-[#E08A95] font-serif font-bold hover:underline"
+                    className="text-[#8B2635] dark:text-[#E08A95] font-serif font-bold hover:underline cursor-pointer"
                   >
                     Enroll today
                   </button>
@@ -224,7 +245,7 @@ export const AuthModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setAuthModalMode('login')}
-                    className="text-[#8B2635] dark:text-[#E08A95] font-serif font-bold hover:underline"
+                    className="text-[#8B2635] dark:text-[#E08A95] font-serif font-bold hover:underline cursor-pointer"
                   >
                     Authenticate
                   </button>
