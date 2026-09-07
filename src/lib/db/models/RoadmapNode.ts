@@ -45,8 +45,10 @@ const RoadmapNodeSchema = new Schema<IRoadmapNode>(
     sequenceOrder: { type: Number, required: true, default: 0 },
     subtopics: { type: [RoadmapSubtopicSchema], default: [] },
   },
-  { timestamps: true, collection: 'roadmap_nodes' }
+  { timestamps: true }
 );
+
+RoadmapNodeSchema.index({ title: 'text', description: 'text', whyItMatters: 'text' });
 
 export const RoadmapNode: Model<IRoadmapNode> =
   mongoose.models.RoadmapNode || mongoose.model<IRoadmapNode>('RoadmapNode', RoadmapNodeSchema);

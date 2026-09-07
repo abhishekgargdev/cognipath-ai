@@ -43,5 +43,7 @@ const LessonSchema = new Schema<ILesson>(
   { timestamps: true, collection: 'lessons' }
 );
 
+LessonSchema.index({ title: 'text', subtitle: 'text', whyYouAreLearningThis: 'text' });
+
 export const Lesson: Model<ILesson> =
   mongoose.models.Lesson || mongoose.model<ILesson>('Lesson', LessonSchema);

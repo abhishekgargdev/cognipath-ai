@@ -36,5 +36,7 @@ const SkillTaxonomySchema = new Schema<ISkillTaxonomy>(
   { timestamps: true, collection: 'skills_taxonomies' }
 );
 
+SkillTaxonomySchema.index({ name: 'text', description: 'text', careerRelevance: 'text' });
+
 export const SkillTaxonomy: Model<ISkillTaxonomy> =
   mongoose.models.SkillTaxonomy || mongoose.model<ISkillTaxonomy>('SkillTaxonomy', SkillTaxonomySchema);

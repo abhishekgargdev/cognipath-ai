@@ -1,39 +1,95 @@
-import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
-import { 
-  User, 
-  Settings as SettingsIcon, 
-  Clock, 
-  Moon, 
-  Sun, 
-  Bell, 
-  Check, 
-  Sparkles,
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  User,
+  Clock,
+  Moon,
+  Sun,
+  Check,
   Save,
-  RotateCcw
+  RotateCcw,
 } from 'lucide-react';
+import { useUIStore } from '@/providers/ui-store';
+import { LoadingSpinner } from '@/components/common';
 
-export const SettingsView: React.FC = () => {
-  const { user, setUser, theme, toggleTheme, setActiveView } = useApp();
+export function SettingsClient() {
+  const router = useRouter();
+  const { theme, setTheme } = useUIStore();
 
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
-  const [targetGoal, setTargetGoal] = useState(user.targetGoal);
-  const [dailyMinutes, setDailyMinutes] = useState(user.dailyCommitmentMinutes);
+  const [name, setName] = useState('Senior Scholar');
+  const [email, setEmail] = useState('scholar@cognipath.ai');
+  const [targetGoal, setTargetGoal] = useState('Full Stack Architect');
+  const [dailyMinutes, setDailyMinutes] = useState(30);
+  const [experienceLevel, setExperienceLevel] = useState('Intermediate');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        setIsLoading(true);
+        const res = await fetch('/api/users/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) {
+            setName(data.profile.userId || 'Senior Scholar');
+            setTargetGoal(data.profile.targetGoal || 'Full Stack Architect');
+            setDailyMinutes(data.profile.dailyCommitmentMinutes || 30);
+            setExperienceLevel(data.profile.experienceLevel || 'Intermediate');
+            if (data.profile.theme) {
+              setTheme(data.profile.theme);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load profile settings:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadProfile();
+  }, [setTheme]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUser(prev => ({
-      ...prev,
-      name,
-      email,
-      targetGoal,
-      dailyCommitmentMinutes: dailyMinutes
-    }));
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
+    setIsSaving(true);
+
+    try {
+      const res = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          targetGoal,
+          dailyCommitmentMinutes: dailyMinutes,
+          theme,
+        }),
+      });
+
+      if (res.ok) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto p-12 text-center space-y-4">
+        <LoadingSpinner size="lg" variant="primary" />
+        <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91]">
+          Loading scholar dossier & heuristic calibration parameters...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div id="settings-view" className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
@@ -59,16 +115,14 @@ export const SettingsView: React.FC = () => {
           </h3>
 
           <div className="flex items-center gap-4 pb-2">
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              className="w-14 h-14 rounded-full object-cover border border-[#DCD9D1] dark:border-[#2C2A26]"
-            />
+            <div className="w-14 h-14 rounded-full bg-[#121212] text-white dark:bg-[#F4F2EC] dark:text-[#121212] flex items-center justify-center font-serif text-xl font-bold border border-[#DCD9D1] dark:border-[#2C2A26]">
+              {name.charAt(0).toUpperCase()}
+            </div>
             <div>
-              <p className="text-base font-serif font-bold text-[#121212] dark:text-[#F4F2EC]">{user.name}</p>
-              <p className="text-xs font-mono text-[#5C5852] dark:text-[#9E9A91]">{user.email}</p>
+              <p className="text-base font-serif font-bold text-[#121212] dark:text-[#F4F2EC]">{name}</p>
+              <p className="text-xs font-mono text-[#5C5852] dark:text-[#9E9A91]">{email}</p>
               <span className="inline-block mt-1 px-2 py-0.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#F4F1EA] dark:bg-[#201F1B] text-[#5C5852] dark:text-[#9E9A91] font-mono text-[9px] uppercase tracking-wider font-semibold">
-                {user.experienceLevel} Tier
+                {experienceLevel} Tier
               </span>
             </div>
           </div>
@@ -139,7 +193,7 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => { if (theme !== 'light') toggleTheme(); }}
+              onClick={() => setTheme('light')}
               className={`p-3 rounded-xs border flex items-center gap-2 text-xs font-serif font-bold cursor-pointer ${
                 theme === 'light'
                   ? 'border-[#121212] bg-[#F4F1EA] text-[#121212]'
@@ -152,7 +206,7 @@ export const SettingsView: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => { if (theme !== 'dark') toggleTheme(); }}
+              onClick={() => setTheme('dark')}
               className={`p-3 rounded-xs border flex items-center gap-2 text-xs font-serif font-bold cursor-pointer ${
                 theme === 'dark'
                   ? 'border-[#F4F2EC] bg-[#201F1B] text-[#F4F2EC]'
@@ -169,7 +223,7 @@ export const SettingsView: React.FC = () => {
         <div className="flex items-center justify-between pt-4">
           <button
             type="button"
-            onClick={() => setActiveView('onboarding')}
+            onClick={() => router.push('/onboarding')}
             className="text-xs font-serif italic text-[#5C5852] dark:text-[#9E9A91] hover:text-[#121212] dark:hover:text-[#F4F2EC] flex items-center gap-1.5 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -184,14 +238,15 @@ export const SettingsView: React.FC = () => {
             )}
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs flex items-center gap-2 border border-[#121212] dark:border-[#F4F2EC] shadow-xs cursor-pointer"
+              disabled={isSaving}
+              className="px-6 py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs flex items-center gap-2 border border-[#121212] dark:border-[#F4F2EC] shadow-xs cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Commit Dossier Preferences</span>
+              <span>{isSaving ? 'Saving Dossier...' : 'Commit Dossier Preferences'}</span>
             </button>
           </div>
         </div>
       </form>
     </div>
   );
-};
+}
