@@ -23,18 +23,16 @@ export async function connectToDatabase() {
     return cached.conn;
   }
 
-  if (!MONGODB_URI) {
-    console.warn('[mongoose] MONGODB_URI is not defined in environment variables.');
-    return null;
-  }
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cognipath-ai';
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => m);
+    cached.promise = mongoose.connect(uri, opts).then((m) => m);
   }
+
 
   try {
     cached.conn = await cached.promise;

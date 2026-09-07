@@ -64,4 +64,29 @@ export async function setCachedTaskResult(
   }
 }
 
+export async function acquireLock(lockKey: string, ttlSeconds: number = 30): Promise<boolean> {
+  const redis = getRedisInstance();
+  if (!redis) return true; // Fallback: allow execution if Redis is not configured
+
+  try {
+    const res = await redis.set(lockKey, 'locked', { nx: true, ex: ttlSeconds });
+    return res === 'OK';
+  } catch (err) {
+    console.warn(`[AI Cache] Failed to acquire lock ${lockKey}:`, err);
+    return true; // Fallback to allowing execution on Redis failure
+  }
+}
+
+export async function releaseLock(lockKey: string): Promise<void> {
+  const redis = getRedisInstance();
+  if (!redis) return;
+
+  try {
+    await redis.del(lockKey);
+  } catch (err) {
+    console.warn(`[AI Cache] Failed to release lock ${lockKey}:`, err);
+  }
+}
+
 export { getRedisInstance };
+

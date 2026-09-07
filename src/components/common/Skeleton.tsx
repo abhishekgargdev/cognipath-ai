@@ -105,4 +105,18 @@ export const SkeletonMetricCard: React.FC<{ className?: string }> = ({ className
       </div>
     </div>
   );
+export const PracticeEvaluationSkeleton: React.FC = () => {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  );
 };
+
