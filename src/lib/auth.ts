@@ -4,7 +4,9 @@ import Credentials from 'next-auth/providers/credentials';
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '@/lib/db/mongodb';
 import { connectToDatabase } from '@/lib/db/mongoose';
+import { User } from '@/lib/db/models/User';
 import { UserProfile } from '@/lib/db/models/UserProfile';
+import { verifyPassword } from '@/lib/auth/password';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: MongoDBAdapter(clientPromise),
@@ -15,18 +17,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
     Credentials({
       id: 'credentials',
-      name: 'Demo Account',
+      name: 'Credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const email = (credentials?.email as string) || 'demo@cognipath.ai';
-        return {
-          id: 'demo-user-id',
-          name: 'Scholar Candidate (Demo)',
-          email,
-          image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        };
+        const email = (credentials?.email as string)?.trim();
+        const password = credentials?.password as string;
+
+        if (!email) return null;
+
+        try {
+          await connectToDatabase();
+
+          // Query user from MongoDB
+          const user = await User.findOne({ email }).select('+passwordHash');
+
+          if (user) {
+            // Verify password if user has passwordHash set
+            if (user.passwordHash && password) {
+              const isValid = await verifyPassword(password, user.passwordHash);
+              if (!isValid) {
+                console.warn(`[Auth.js] Password verification failed for ${email}`);
+                return null;
+              }
+            }
+
+            return {
+              id: user._id.toString(),
+              name: user.name || 'Scholar User',
+              email: user.email,
+              image: user.image,
+              role: user.role || 'student',
+            };
+          }
+
+          // Fallback demo user if DB user not yet created
+          return {
+            id: 'demo-user-id',
+            name: 'Scholar Candidate (Demo)',
+            email,
+            image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            role: 'student',
+          };
+        } catch (error) {
+          console.error('[Auth.js] Credentials authorize error:', error);
+          return null;
+        }
       },
     }),
   ],
@@ -57,9 +95,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role || 'student';
+      }
+      return token;
+    },
     async session({ session, user, token }) {
       if (session.user) {
-        session.user.id = user?.id || token?.sub || 'demo-user-id';
+        session.user.id = user?.id || (token?.id as string) || token?.sub || 'demo-user-id';
+        (session.user as any).role = (user as any)?.role || (token?.role as string) || 'student';
       }
       return session;
     },
