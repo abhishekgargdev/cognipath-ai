@@ -1,39 +1,88 @@
-import React, { useState, useMemo } from 'react';
-import { useApp } from '../../context/AppContext';
-import { Pagination } from '../common/Pagination';
-import { 
-  Sparkles, 
-  CheckCircle2, 
-  XCircle, 
-  ArrowRight, 
-  Clock, 
-  Plus, 
-  Check, 
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  CheckCircle2,
+  ArrowRight,
+  Clock,
+  Plus,
   BrainCircuit,
   Compass,
-  Filter
+  Filter,
 } from 'lucide-react';
+import { Pagination } from '@/components/common/Pagination';
+import { LoadingSpinner } from '@/components/common';
 
-export const RecommendationsView: React.FC = () => {
-  const { 
-    aiRecommendations, 
-    addRecommendationToRoadmap, 
-    startTopicLearning,
-    setActiveView 
-  } = useApp();
+export interface RecommendationItem {
+  id: string;
+  title: string;
+  category: string;
+  whyRecommendation: string;
+  expectedImpact: 'Critical' | 'High' | 'Medium' | 'Elective';
+  estHours: number;
+  actionTopicId: string;
+  addedToRoadmap: boolean;
+  status: 'pending' | 'accepted' | 'dismissed';
+  prerequisites?: Array<{ name: string; satisfied: boolean }>;
+}
 
+export function RecommendationsClient() {
+  const router = useRouter();
+  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(2);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   const priorities = ['all', 'Critical', 'High', 'Medium'];
 
-  const filteredRecommendations = useMemo(() => {
-    if (selectedPriority === 'all') return aiRecommendations;
-    return aiRecommendations.filter(r => r.expectedImpact === selectedPriority);
-  }, [aiRecommendations, selectedPriority]);
+  // Fetch recommendations from /api/recommendations
+  useEffect(() => {
+    async function loadRecommendations() {
+      try {
+        setIsLoading(true);
+        const res = await fetch('/api/recommendations');
+        if (res.ok) {
+          const data = await res.json();
+          setRecommendations(data.recommendations || []);
+        }
+      } catch (err) {
+        console.error('Failed to load recommendations:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadRecommendations();
+  }, []);
 
-  const totalPages = Math.ceil(filteredRecommendations.length / pageSize);
+  const handleAccept = async (recId: string) => {
+    try {
+      setAcceptingId(recId);
+      const res = await fetch(`/api/recommendations/${recId}/accept`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        setRecommendations((prev) =>
+          prev.map((r) =>
+            r.id === recId ? { ...r, status: 'accepted', addedToRoadmap: true } : r
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Failed to accept recommendation:', err);
+    } finally {
+      setAcceptingId(null);
+    }
+  };
+
+  const filteredRecommendations = useMemo(() => {
+    if (selectedPriority === 'all') return recommendations;
+    return recommendations.filter((r) => r.expectedImpact === selectedPriority);
+  }, [recommendations, selectedPriority]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRecommendations.length / pageSize));
   const paginatedRecommendations = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredRecommendations.slice(start, start + pageSize);
@@ -52,6 +101,17 @@ export const RecommendationsView: React.FC = () => {
     setPageSize(size);
     setCurrentPage(1);
   };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-5xl mx-auto p-12 text-center space-y-4">
+        <LoadingSpinner size="lg" variant="primary" />
+        <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91]">
+          Evaluating diagnostic test performance and synthesizing adaptive recommendations...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div id="recommendations-view" className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-200">
@@ -133,8 +193,8 @@ export const RecommendationsView: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <span className={`px-2.5 py-1 rounded-xs text-[9px] font-mono font-bold uppercase tracking-widest border ${
-                    rec.expectedImpact === 'Critical' 
-                      ? 'border-[#8B2635]/40 bg-[#8B2635]/10 text-[#8B2635] dark:text-[#E08A95]' 
+                    rec.expectedImpact === 'Critical'
+                      ? 'border-[#8B2635]/40 bg-[#8B2635]/10 text-[#8B2635] dark:text-[#E08A95]'
                       : rec.expectedImpact === 'High'
                       ? 'border-[#1F3A2B]/40 bg-[#1F3A2B]/10 text-[#1F3A2B] dark:text-[#4E876A]'
                       : 'border-[#DCD9D1] dark:border-[#2C2A26] bg-[#F4F1EA] dark:bg-[#201F1B] text-[#5C5852] dark:text-[#9E9A91]'
@@ -155,30 +215,32 @@ export const RecommendationsView: React.FC = () => {
               </div>
 
               {/* Prerequisites Checklist */}
-              <div className="space-y-2">
-                <span className="text-xs font-serif font-bold text-[#5C5852] dark:text-[#9E9A91] block">
-                  Foundational Prerequisite Audit:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {rec.prerequisites.map((p) => (
-                    <div
-                      key={p.name}
-                      className="p-2.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#151412] flex items-center justify-between text-xs font-serif"
-                    >
-                      <span className="text-[#121212] dark:text-[#EAE7DF]">{p.name}</span>
-                      {p.satisfied ? (
-                        <span className="text-[10px] font-mono font-bold text-[#1F3A2B] dark:text-[#4E876A] flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Satisfied
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-mono font-bold text-[#5C5852] dark:text-[#9E9A91] flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" /> In Progress
-                        </span>
-                      )}
-                    </div>
-                  ))}
+              {rec.prerequisites && rec.prerequisites.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-serif font-bold text-[#5C5852] dark:text-[#9E9A91] block">
+                    Foundational Prerequisite Audit:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {rec.prerequisites.map((p, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#151412] flex items-center justify-between text-xs font-serif"
+                      >
+                        <span className="text-[#121212] dark:text-[#EAE7DF]">{p.name}</span>
+                        {p.satisfied ? (
+                          <span className="text-[10px] font-mono font-bold text-[#1F3A2B] dark:text-[#4E876A] flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Satisfied
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono font-bold text-[#5C5852] dark:text-[#9E9A91] flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" /> In Progress
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Action Buttons */}
               <div className="pt-3 border-t border-[#DCD9D1] dark:border-[#2C2A26] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -189,7 +251,7 @@ export const RecommendationsView: React.FC = () => {
                 <div className="flex items-center gap-3">
                   {rec.addedToRoadmap ? (
                     <button
-                      onClick={() => startTopicLearning(rec.actionTopicId)}
+                      onClick={() => router.push(`/learn/${rec.actionTopicId}`)}
                       className="px-4 py-2 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs border border-[#121212] dark:border-[#F4F2EC]"
                     >
                       <span>Commence Module</span>
@@ -197,11 +259,12 @@ export const RecommendationsView: React.FC = () => {
                     </button>
                   ) : (
                     <button
-                      onClick={() => addRecommendationToRoadmap(rec.id)}
-                      className="px-4 py-2 rounded-xs border border-[#121212] dark:border-[#F4F2EC] bg-[#F4F1EA] dark:bg-[#201F1B] hover:bg-[#EAE7DF] dark:hover:bg-[#2A2824] text-[#121212] dark:text-[#F4F2EC] font-serif font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                      onClick={() => handleAccept(rec.id)}
+                      disabled={acceptingId === rec.id}
+                      className="px-4 py-2 rounded-xs border border-[#121212] dark:border-[#F4F2EC] bg-[#F4F1EA] dark:bg-[#201F1B] hover:bg-[#EAE7DF] dark:hover:bg-[#2A2824] text-[#121212] dark:text-[#F4F2EC] font-serif font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all disabled:opacity-50"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Incorporate into Syllabus</span>
+                      <span>{acceptingId === rec.id ? 'Incorporating...' : 'Incorporate into Syllabus'}</span>
                     </button>
                   )}
                 </div>
@@ -230,16 +293,16 @@ export const RecommendationsView: React.FC = () => {
           <Compass className="w-5 h-5 text-[#8B2635] dark:text-[#E08A95] shrink-0" />
           <div>
             <p className="text-xs font-serif font-bold text-[#121212] dark:text-[#F4F2EC]">Desire recalibration of overarching curriculum objectives?</p>
-            <p className="text-[11px] font-serif italic text-[#5C5852] dark:text-[#9E9A91]">Adjust target roles, competency benchmarks, and daily study cadence in Settings.</p>
+            <p className="text-[11px] font-serif italic text-[#5C5852] dark:text-[#9E9A91]">View your dynamic curriculum roadmap to see newly added nodes.</p>
           </div>
         </div>
         <button
-          onClick={() => setActiveView('settings')}
+          onClick={() => router.push('/roadmap')}
           className="px-4 py-2 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#201F1B] text-xs font-serif font-bold text-[#121212] dark:text-[#F4F2EC] hover:bg-[#EAE7DF] cursor-pointer whitespace-nowrap"
         >
-          Configure Preferences
+          View Roadmap
         </button>
       </div>
     </div>
   );
-};
+}
