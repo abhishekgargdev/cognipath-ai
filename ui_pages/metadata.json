@@ -1,6 +1,0 @@
-{
-  "name": "CogniPath AI",
-  "description": "Personalized AI learning platform that analyzes goals, maps skill roadmaps, teaches concepts, provides adaptive daily practice, and continuously decides what to learn next.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

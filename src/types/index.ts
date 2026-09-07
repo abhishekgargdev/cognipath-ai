@@ -149,7 +149,6 @@ export interface PracticeQuestion {
   options?: { id: string; label: string; code?: string }[];
   correctAnswer?: string;
   explanation?: string;
-  // Coding specific
   starterCode?: string;
   language?: 'javascript' | 'typescript' | 'python';
   testCases?: TestCase[];
