@@ -84,7 +84,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               currentTopicId: 'js-event-loop',
               theme: 'light',
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
           );
 
           return {

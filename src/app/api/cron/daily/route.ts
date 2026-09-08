@@ -85,7 +85,7 @@ export async function GET(req: Request) {
                 topicId,
                 sequenceOrder: existingCount + i + 1,
               },
-              { upsert: true, new: true }
+              { upsert: true, returnDocument: 'after' }
             );
 
             questionsGeneratedCount++;

@@ -37,7 +37,7 @@ export async function GET(req: Request) {
               id: item.id || `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
               userId,
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
           );
         }
 
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
           await AiRecommendation.findOneAndUpdate(
             { id: item.id },
             item,
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
           );
         }
 

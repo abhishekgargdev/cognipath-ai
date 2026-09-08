@@ -48,7 +48,7 @@ export async function PATCH(req: Request) {
     const profile = await UserProfile.findOneAndUpdate(
       { userId },
       { $set: updatePayload },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     ).lean();
 
     return NextResponse.json({

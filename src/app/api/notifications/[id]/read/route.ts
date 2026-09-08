@@ -17,7 +17,7 @@ export async function PATCH(
     const notif = await Notification.findOneAndUpdate(
       { $or: [{ id }, { _id: id }], userId },
       { $set: { read: true } },
-      { new: true }
+      { returnDocument: 'after' }
     ).lean();
 
     if (!notif) {

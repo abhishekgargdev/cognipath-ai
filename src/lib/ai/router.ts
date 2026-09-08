@@ -53,8 +53,9 @@ class AIRouter {
     if (!redis) return;
     try {
       const redisKey = `gemini:quota:${keyIndex}:${this.getTodayDateKey()}`;
-      await redis.set(redisKey, 1, { ex: 86400 });
-      console.warn(`[AI Router] Gemini key index ${keyIndex} flagged as rate limited for date ${this.getTodayDateKey()}`);
+      // Flag rate limit for 60 seconds (1 minute per-minute RPM window), not 24 hours
+      await redis.set(redisKey, 1, { ex: 60 });
+      console.warn(`[AI Router] Gemini key index ${keyIndex} flagged as rate limited for 60 seconds.`);
     } catch {
       // Upstash Redis connection unavailable or offline, skip remote flagging
     }
@@ -87,7 +88,7 @@ class AIRouter {
               systemPrompt: options.systemPrompt,
               jsonMode: options.jsonMode,
               temperature: options.temperature,
-              timeoutMs: options.timeoutMs ?? 10000,
+              timeoutMs: options.timeoutMs ?? 15000,
             });
 
             // Advance round-robin pointer for next call
@@ -132,7 +133,7 @@ class AIRouter {
         systemPrompt: options.systemPrompt,
         jsonMode: options.jsonMode,
         temperature: options.temperature,
-        timeoutMs: options.timeoutMs ?? 15000,
+        timeoutMs: options.timeoutMs ?? 30000,
       });
 
       return {

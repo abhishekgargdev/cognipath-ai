@@ -23,9 +23,9 @@ export async function callNvidiaProvider(options: NvidiaCallOptions): Promise<Nv
 
   const openai = new OpenAI({ apiKey, baseURL });
 
-  const primaryModel = (process.env.NVIDIA_MODEL_TEXT || 'nvidia/nemotron-3.5-lightning-30b-a3b').trim();
+  const primaryModel = (process.env.NVIDIA_MODEL_TEXT || 'meta/llama-3.1-70b-instruct').trim();
   const candidateModels = Array.from(
-    new Set([primaryModel, 'nvidia/nemotron-3.5-lightning-30b-a3b', 'nvidia/llama-3.1-nemotron-70b-instruct'])
+    new Set([primaryModel, 'meta/llama-3.1-70b-instruct', 'nvidia/llama-3.1-nemotron-70b-instruct', 'mistralai/mistral-7b-instruct-v0.3'])
   );
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];

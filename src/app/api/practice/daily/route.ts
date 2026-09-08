@@ -65,7 +65,7 @@ export async function GET(req: Request) {
                 topicId: currentTopicId,
                 sequenceOrder: existingCount + i + 1,
               },
-              { upsert: true, new: true }
+              { upsert: true, returnDocument: 'after' }
             ).lean();
 
             questions.push(newQ as any);

@@ -53,7 +53,7 @@ export async function POST(req: Request) {
         learningPreferences: data.learningPreferences,
         lastActiveAt: new Date(),
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     // 2. Generate Roadmap via AI Abstraction Layer

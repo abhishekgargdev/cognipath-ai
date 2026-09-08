@@ -45,7 +45,7 @@ export async function POST(
         sequenceOrder: 99,
         prerequisites: (rec.prerequisites || []).map((p: any) => p.name),
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     // 4. Insert / update UserNodeProgress in Mongo
@@ -57,7 +57,7 @@ export async function POST(
         status: 'available',
         masteryPercent: 0,
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     return NextResponse.json({
