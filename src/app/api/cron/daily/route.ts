@@ -40,19 +40,16 @@ export async function GET(req: Request) {
     let questionsGenerated = 0;
     let recommendationsRefreshed = 0;
 
-    // 2. Step A: Advance active users' roadmaps based on prerequisites and unlockDay
+    // 2. Step A: Advance active users' roadmaps based on prerequisites and availableFrom <= tomorrow
     const activeProfiles = await UserProfile.find().lean();
     const topicDemandMap = new Map<string, number>();
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     for (const profile of activeProfiles) {
-      const userDays = Math.floor(
-        (Date.now() - new Date(profile.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24)
-      );
-
       const userProgress = await UserNodeProgress.find({ userId: profile.userId });
-      const completedNodeIds = new Set(
+      const completedOrMasteredNodeIds = new Set(
         userProgress
-          .filter((p) => p.status === 'completed' || p.masteryPercent >= 80)
+          .filter((p) => p.status === 'completed' || p.masteryPercent >= 60)
           .map((p) => p.nodeId)
       );
 
@@ -60,10 +57,10 @@ export async function GET(req: Request) {
         if (progress.status === 'locked') {
           const nodeDoc = await RoadmapNode.findOne({ id: progress.nodeId }).lean();
           const prereqs = nodeDoc?.prerequisites || [];
-          const prereqsMet = prereqs.every((prereqId) => completedNodeIds.has(prereqId));
-          const unlockDayMet = (progress.unlockDay ?? 0) <= userDays + 1;
+          const prereqsMet = prereqs.every((prereqId) => completedOrMasteredNodeIds.has(prereqId));
+          const availableFromMet = !progress.availableFrom || progress.availableFrom <= tomorrow;
 
-          if (prereqsMet && unlockDayMet) {
+          if (prereqsMet && availableFromMet) {
             progress.status = 'available';
             await progress.save();
           }

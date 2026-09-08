@@ -57,6 +57,7 @@ export default async function RoadmapPage() {
         difficulty: n.difficulty,
         estMinutes: n.estMinutes,
         masteryPercent: userProg?.masteryPercent ?? 0,
+        availableFrom: userProg?.availableFrom ? userProg.availableFrom.toISOString() : null,
         prerequisites: n.prerequisites || [],
         whyItMatters: n.whyItMatters,
         description: n.description,

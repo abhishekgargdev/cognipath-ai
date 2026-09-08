@@ -35,6 +35,7 @@ export interface ClientRoadmapNode {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   estMinutes: number;
   masteryPercent: number;
+  availableFrom?: string | Date | null;
   prerequisites: string[];
   whyItMatters: string;
   description: string;
@@ -169,7 +170,15 @@ export function RoadmapClient({ user, milestones: initialMilestones }: RoadmapCl
     }
   };
 
-  const getStatusBadge = (status: NodeStatus, mastery: number) => {
+  const getDaysUntilAvailable = (availableFrom?: string | Date | null): number => {
+    if (!availableFrom) return 0;
+    const availDate = new Date(availableFrom);
+    const now = new Date();
+    if (availDate.getTime() <= now.getTime()) return 0;
+    return Math.ceil((availDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const getStatusBadge = (status: NodeStatus, mastery: number, availableFrom?: string | Date | null) => {
     switch (status) {
       case 'completed':
         return (
@@ -195,12 +204,21 @@ export function RoadmapClient({ user, milestones: initialMilestones }: RoadmapCl
             Available
           </span>
         );
-      case 'locked':
+      case 'locked': {
+        const daysLeft = getDaysUntilAvailable(availableFrom);
+        if (daysLeft > 0) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[9px] font-mono font-bold tracking-wider uppercase border border-[#8B2635]/30 bg-[#8B2635]/10 text-[#8B2635] dark:text-[#E08A95]">
+              <Lock className="w-2.5 h-2.5" /> Unlocks in {daysLeft} day{daysLeft > 1 ? 's' : ''}
+            </span>
+          );
+        }
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[9px] font-mono font-bold tracking-wider uppercase border border-[#DCD9D1]/50 dark:border-[#2C2A26]/50 bg-transparent text-[#9E9A91]">
             <Lock className="w-2.5 h-2.5" /> Prerequisite Required
           </span>
         );
+      }
     }
   };
 
@@ -329,24 +347,32 @@ export function RoadmapClient({ user, milestones: initialMilestones }: RoadmapCl
                           : 'border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] hover:border-[#121212] dark:hover:border-[#F4F2EC] shadow-xs'
                       }`}
                     >
-                      {/* Prerequisite Popover for Locked Nodes */}
-                      {isLocked && (hoveredLockedNodeId === node.id || node.prerequisites.length > 0) && (
-                        <div className="mb-2 p-2 rounded-xs border border-[#8B2635]/30 bg-[#8B2635]/5 text-[10px] font-mono text-[#8B2635] dark:text-[#E08A95] flex items-start gap-1.5">
-                          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-bold uppercase tracking-wider block">Locked Node</span>
-                            <span>
-                              Requires completing:{' '}
-                              <strong>{node.prerequisites.join(', ') || 'Parent Milestone Topics'}</strong>
-                            </span>
+                      {/* Prerequisite or Drip Unlock Popover for Locked Nodes */}
+                      {isLocked && (() => {
+                        const daysLeft = getDaysUntilAvailable(node.availableFrom);
+                        return (
+                          <div className="mb-2 p-2 rounded-xs border border-[#8B2635]/30 bg-[#8B2635]/5 text-[10px] font-mono text-[#8B2635] dark:text-[#E08A95] flex items-start gap-1.5">
+                            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-bold uppercase tracking-wider block">
+                                {daysLeft > 0 ? `Scheduled Unlock (In ${daysLeft} day${daysLeft > 1 ? 's' : ''})` : 'Locked Node'}
+                              </span>
+                              <span>
+                                {daysLeft > 0 ? (
+                                  <>Unlocks on: <strong>{new Date(node.availableFrom!).toLocaleDateString()}</strong></>
+                                ) : (
+                                  <>Requires completing: <strong>{node.prerequisites.join(', ') || 'Parent Milestone Topics'}</strong></>
+                                )}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       <div>
                         {/* Node Header */}
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          {getStatusBadge(node.status, node.masteryPercent)}
+                          {getStatusBadge(node.status, node.masteryPercent, node.availableFrom)}
                           <span className="text-[10px] text-[#5C5852] dark:text-[#9E9A91] font-mono">
                             ~{node.estMinutes}m • {node.difficulty}
                           </span>
@@ -421,7 +447,7 @@ export function RoadmapClient({ user, milestones: initialMilestones }: RoadmapCl
             </button>
 
             <div className="flex items-center gap-2 mb-2">
-              {getStatusBadge(selectedNode.status, selectedNode.masteryPercent)}
+              {getStatusBadge(selectedNode.status, selectedNode.masteryPercent, selectedNode.availableFrom)}
               <span className="text-xs text-[#5C5852] dark:text-[#9E9A91] font-mono uppercase tracking-wider">
                 {selectedNode.difficulty} • ~{selectedNode.estMinutes} mins
               </span>

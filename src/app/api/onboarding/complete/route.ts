@@ -91,13 +91,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Initialize UserNodeProgress documents
+    // 4. Initialize UserNodeProgress documents with drip schedule availableFrom dates
+    const daysPerNode =
+      data.dailyCommitmentMinutes <= 15 ? 3 : data.dailyCommitmentMinutes <= 45 ? 2 : 1;
+    const now = new Date();
+
     for (let i = 0; i < template.nodes.length; i++) {
       const node = template.nodes[i];
-      const initialStatus =
-        i === 0 || !node.prerequisites || node.prerequisites.length === 0
-          ? 'available'
-          : 'locked';
+      const initialStatus = i === 0 ? 'available' : 'locked';
+      const availableFrom = new Date(now.getTime() + i * daysPerNode * 24 * 60 * 60 * 1000);
 
       await UserNodeProgress.findOneAndUpdate(
         { userId: session.user.id, nodeId: node.id },
@@ -106,7 +108,8 @@ export async function POST(req: Request) {
           nodeId: node.id,
           status: initialStatus,
           masteryPercent: 0,
-          unlockDay: node.unlockDay ?? i,
+          unlockDay: i * daysPerNode,
+          availableFrom,
         },
         { upsert: true }
       );

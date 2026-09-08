@@ -6,6 +6,7 @@ export interface IUserNodeProgress extends Document {
   status: 'locked' | 'available' | 'in_progress' | 'completed' | 'review_needed';
   masteryPercent: number;
   unlockDay?: number;
+  availableFrom?: Date | null;
   startedAt?: Date | null;
   completedAt?: Date | null;
   reviewFlaggedAt?: Date | null;
@@ -24,6 +25,7 @@ const UserNodeProgressSchema = new Schema<IUserNodeProgress>(
     },
     masteryPercent: { type: Number, required: true, default: 0, min: 0, max: 100 },
     unlockDay: { type: Number, default: 0 },
+    availableFrom: { type: Date, default: null, index: true },
     startedAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
     reviewFlaggedAt: { type: Date, default: null },
