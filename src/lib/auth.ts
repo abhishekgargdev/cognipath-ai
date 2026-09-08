@@ -75,14 +75,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               targetGoal: 'Full Stack Architect',
               experienceLevel: 'Intermediate',
               dailyCommitmentMinutes: 30,
-              learningPreferences: ['code-first', 'theoretical-monographs'],
-              streakDays: 1,
-              xp: 100,
-              overallMastery: 10,
+              learningPreferences: [],
+              streakDays: 0,
+              xp: 0,
+              overallMastery: 0,
               completedQuestionsToday: 0,
               totalQuestionsTargetToday: 5,
-              currentTopicId: 'js-event-loop',
+              currentTopicId: '',
               theme: 'light',
+              onboardingCompletedAt: null,
             },
             { upsert: true, returnDocument: 'after' }
           );
@@ -112,14 +113,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             targetGoal: 'Full Stack Architect',
             experienceLevel: 'Intermediate',
             dailyCommitmentMinutes: 30,
-            learningPreferences: ['code-first', 'theoretical-monographs'],
+            learningPreferences: [],
             streakDays: 0,
             xp: 0,
             overallMastery: 0,
             completedQuestionsToday: 0,
             totalQuestionsTargetToday: 5,
-            currentTopicId: 'js-event-loop',
+            currentTopicId: '',
             theme: 'light',
+            onboardingCompletedAt: null,
           });
         }
       } catch (error) {

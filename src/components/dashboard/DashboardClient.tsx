@@ -51,7 +51,11 @@ export function DashboardClient() {
     );
   }
 
-  const { profile, currentTopic } = data;
+  const { profile, currentTopic, contentStatus } = data;
+  const isPreparing = contentStatus?.isPreparing ?? false;
+  const lessonStatus = contentStatus?.lessonStatus || 'ready';
+  const hasReadyQuestions = contentStatus?.hasReadyQuestions ?? true;
+
   const completedToday = profile?.completedQuestionsToday || 0;
   const targetToday = profile?.totalQuestionsTargetToday || 5;
   const remainingPercent = Math.max(0, Math.round(((targetToday - completedToday) / targetToday) * 100));
@@ -77,28 +81,55 @@ export function DashboardClient() {
         <div className="flex items-center gap-2">
           <Link href={`/learn/${currentTopic?.id || 'js-event-loop'}`}>
             <Button variant="secondary" size="sm" leftIcon={<BookOpen className="w-3.5 h-3.5" />}>
-              Resume Monograph
+              {lessonStatus === 'pending' ? 'Monograph Preparing...' : 'Resume Monograph'}
             </Button>
           </Link>
           <Link href="/practice">
             <Button variant="primary" size="sm" leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}>
-              Daily Practice
+              {hasReadyQuestions ? 'Daily Practice' : 'Practice Preparing...'}
             </Button>
           </Link>
         </div>
       </div>
 
+      {/* Content Preparation Notice */}
+      {isPreparing && (
+        <div className="p-4 rounded-xs border border-[#8B2635]/30 bg-[#8B2635]/5 dark:bg-[#8B2635]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <LoadingSpinner size="sm" variant="primary" />
+            <div>
+              <h4 className="text-sm font-serif font-bold text-[#8B2635] dark:text-[#E08A95]">
+                Curriculum Synthesis in Progress
+              </h4>
+              <p className="text-xs text-[#5C5852] dark:text-[#A6A299]">
+                {lessonStatus === 'pending' && !hasReadyQuestions
+                  ? 'Your initial lesson and practice exercises are being prepared by the background engine.'
+                  : lessonStatus === 'pending'
+                  ? 'Your topic lesson is being synthesized by the background engine.'
+                  : 'Diagnostic practice exercises are being generated for your curriculum.'}
+                {' '}You can explore your overall roadmap or check back shortly.
+              </p>
+            </div>
+          </div>
+          <Link href="/roadmap">
+            <Button variant="outline" size="sm">
+              View Roadmap
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* Telemetry Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard
           title="Daily Exercises"
-          value={`${completedToday} / ${targetToday}`}
-          subValue={`${Math.round((completedToday / targetToday) * 100)}% target`}
-          tag={`${remainingPercent}% REMAINING`}
-          progressPercent={Math.round((completedToday / targetToday) * 100)}
+          value={hasReadyQuestions ? `${completedToday} / ${targetToday}` : 'Pending'}
+          subValue={hasReadyQuestions ? `${Math.round((completedToday / targetToday) * 100)}% target` : 'Questions preparing in background'}
+          tag={hasReadyQuestions ? `${remainingPercent}% REMAINING` : 'PREPARATION IN PROGRESS'}
+          progressPercent={hasReadyQuestions ? Math.round((completedToday / targetToday) * 100) : 0}
           progressBarColor="primary"
-          footerText="Continue daily diagnostic queue"
-          footerHighlight
+          footerText={hasReadyQuestions ? "Continue daily diagnostic queue" : "Awaiting background generation"}
+          footerHighlight={hasReadyQuestions}
         />
 
         <MetricCard
@@ -142,7 +173,9 @@ export function DashboardClient() {
           <Card accentTop accentVariant="primary">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Badge variant="outline">Current Thesis</Badge>
+                <Badge variant={isPreparing ? 'warning' : 'outline'}>
+                  {isPreparing ? 'Preparing Topic' : 'Current Thesis'}
+                </Badge>
                 <span className="text-xs font-mono text-[#5C5852] dark:text-[#9E9A91]">
                   Est. {currentTopic?.estMinutes || 25} mins
                 </span>
@@ -159,7 +192,7 @@ export function DashboardClient() {
               <div className="pt-2 flex items-center gap-3">
                 <Link href={`/learn/${currentTopic?.id || 'js-event-loop'}`}>
                   <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-                    Commence Monograph
+                    {lessonStatus === 'pending' ? 'Open Monograph (Preparing)' : 'Commence Monograph'}
                   </Button>
                 </Link>
                 <Link href="/roadmap">
@@ -181,7 +214,9 @@ export function DashboardClient() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="p-3 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#F4F1EA] dark:bg-[#1B1A16] flex items-center justify-between">
-                <span className="text-xs font-serif text-[#121212] dark:text-[#F4F2EC]">Sandbox Operational</span>
+                <span className="text-xs font-serif text-[#121212] dark:text-[#F4F2EC]">
+                  {isPreparing ? 'Background Synthesizer Active' : 'Sandbox Operational'}
+                </span>
                 <LoadingSpinner size="sm" variant="primary" />
               </div>
               <div className="text-xs font-serif italic text-[#5C5852] dark:text-[#9E9A91]">

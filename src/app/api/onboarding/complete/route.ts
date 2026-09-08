@@ -115,11 +115,19 @@ export async function POST(req: Request) {
       );
     }
 
-    // Set current topic ID on profile to first available node
+    // Set current topic ID and mark onboarding completed on profile as the final step
     if (template.nodes.length > 0) {
       await UserProfile.updateOne(
         { userId: session.user.id },
-        { currentTopicId: template.nodes[0].id }
+        {
+          currentTopicId: template.nodes[0].id,
+          onboardingCompletedAt: new Date(),
+        }
+      );
+    } else {
+      await UserProfile.updateOne(
+        { userId: session.user.id },
+        { onboardingCompletedAt: new Date() }
       );
     }
 

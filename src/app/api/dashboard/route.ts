@@ -4,6 +4,8 @@ import { connectToDatabase } from '@/lib/db/mongoose';
 import { UserProfile } from '@/lib/db/models/UserProfile';
 import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
 import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
+import { Lesson } from '@/lib/db/models/Lesson';
+import { PracticeQuestion } from '@/lib/db/models/PracticeQuestion';
 
 export async function GET() {
   try {
@@ -12,7 +14,7 @@ export async function GET() {
 
     await connectToDatabase();
 
-    // 1. Fetch user profile or default
+    // 1. Fetch user profile
     let profile = await UserProfile.findOne({ userId }).lean();
     if (!profile) {
       profile = await UserProfile.create({
@@ -20,35 +22,50 @@ export async function GET() {
         targetGoal: 'Full Stack Architect',
         experienceLevel: 'Intermediate',
         dailyCommitmentMinutes: 30,
-        streakDays: 3,
-        xp: 250,
-        overallMastery: 42,
-        completedQuestionsToday: 2,
+        streakDays: 0,
+        xp: 0,
+        overallMastery: 0,
+        completedQuestionsToday: 0,
         totalQuestionsTargetToday: 5,
-        currentTopicId: 'js-event-loop',
+        currentTopicId: '',
+        onboardingCompletedAt: null,
       });
     }
 
     // 2. Fetch current active topic/node
     const currentTopicId = profile.currentTopicId || 'js-event-loop';
-    let currentTopic = await RoadmapNode.findOne({ id: currentTopicId }).lean();
-    if (!currentTopic) {
-      currentTopic = await RoadmapNode.findOne({ id: 'js-event-loop' }).lean();
-    }
+    const currentTopic = await RoadmapNode.findOne({ id: currentTopicId }).lean();
 
     // 3. Fetch node progress
     const progress = await UserNodeProgress.findOne({ userId, nodeId: currentTopicId }).lean();
+
+    // 4. Check readiness of Lesson and Practice Questions
+    const lessonDoc = await Lesson.findOne({ topicId: currentTopicId }).lean();
+    const readyQuestionsCount = await PracticeQuestion.countDocuments({
+      topicId: currentTopicId,
+      $or: [{ status: 'ready' }, { status: { $exists: false } }],
+    });
+
+    const lessonStatus = lessonDoc ? lessonDoc.status || 'ready' : 'pending';
+    const hasReadyQuestions = readyQuestionsCount > 0;
 
     return NextResponse.json({
       profile: {
         targetGoal: profile.targetGoal,
         experienceLevel: profile.experienceLevel,
-        streakDays: profile.streakDays,
-        xp: profile.xp,
-        overallMastery: profile.overallMastery,
-        completedQuestionsToday: profile.completedQuestionsToday,
-        totalQuestionsTargetToday: profile.totalQuestionsTargetToday,
+        streakDays: profile.streakDays || 0,
+        xp: profile.xp || 0,
+        overallMastery: profile.overallMastery || 0,
+        completedQuestionsToday: profile.completedQuestionsToday || 0,
+        totalQuestionsTargetToday: profile.totalQuestionsTargetToday || 5,
         currentTopicId,
+        onboardingCompletedAt: profile.onboardingCompletedAt || null,
+      },
+      contentStatus: {
+        lessonStatus,
+        hasReadyQuestions,
+        readyQuestionsCount,
+        isPreparing: lessonStatus === 'pending' || !hasReadyQuestions,
       },
       currentTopic: currentTopic
         ? {
@@ -57,18 +74,10 @@ export async function GET() {
             description: currentTopic.description,
             whyItMatters: currentTopic.whyItMatters,
             estMinutes: currentTopic.estMinutes,
-            masteryPercent: progress?.masteryPercent || currentTopic.masteryPercent || 0,
-            status: progress?.status || currentTopic.status || 'in_progress',
+            masteryPercent: progress?.masteryPercent || 0,
+            status: progress?.status || 'available',
           }
-        : {
-            id: 'js-event-loop',
-            title: 'JavaScript Event Loop & Microtask Execution',
-            description: 'Deep dive into task queues, MutationObserver callbacks, and event loop tick sequencing.',
-            whyItMatters: 'Critical for non-blocking asynchronous I/O performance in browser and Node.js runtimes.',
-            estMinutes: 25,
-            masteryPercent: 42,
-            status: 'in_progress',
-          },
+        : null,
     });
   } catch (error: any) {
     console.error('[Dashboard GET API Error]:', error);

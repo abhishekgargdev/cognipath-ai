@@ -228,7 +228,7 @@ export function SettingsClient() {
         <div className="flex items-center justify-between pt-4">
           <button
             type="button"
-            onClick={() => router.push('/onboarding')}
+            onClick={() => router.push('/onboarding?mode=edit')}
             className="text-xs font-serif italic text-[#5C5852] dark:text-[#9E9A91] hover:text-[#121212] dark:hover:text-[#F4F2EC] flex items-center gap-1.5 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
