@@ -13,7 +13,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Pagination } from '@/components/common/Pagination';
-import { LoadingSpinner } from '@/components/common';
+import { Button, LoadingSpinner, RecommendationsSkeleton } from '@/components/common';
 
 export interface RecommendationItem {
   id: string;
@@ -108,14 +108,7 @@ export function RecommendationsClient() {
   };
 
   if (isLoading) {
-    return (
-      <div className="max-w-5xl mx-auto p-12 text-center space-y-4">
-        <LoadingSpinner size="lg" variant="primary" />
-        <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91]">
-          Evaluating diagnostic test performance and synthesizing adaptive recommendations...
-        </p>
-      </div>
-    );
+    return <RecommendationsSkeleton />;
   }
 
   return (
@@ -263,14 +256,16 @@ export function RecommendationsClient() {
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   ) : (
-                    <button
+                    <Button
                       onClick={() => handleAccept(rec.id)}
                       disabled={acceptingId === rec.id}
-                      className="px-4 py-2 rounded-xs border border-[#121212] dark:border-[#F4F2EC] bg-[#F4F1EA] dark:bg-[#201F1B] hover:bg-[#EAE7DF] dark:hover:bg-[#2A2824] text-[#121212] dark:text-[#F4F2EC] font-serif font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all disabled:opacity-50"
+                      isLoading={acceptingId === rec.id}
+                      loadingText="Incorporating..."
+                      variant="secondary"
+                      leftIcon={<Plus className="w-3.5 h-3.5" />}
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{acceptingId === rec.id ? 'Incorporating...' : 'Incorporate into Syllabus'}</span>
-                    </button>
+                      Incorporate into Syllabus
+                    </Button>
                   )}
                 </div>
               </div>

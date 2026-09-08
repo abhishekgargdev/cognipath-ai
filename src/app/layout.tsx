@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { AuthSessionProvider } from '@/providers/SessionProvider';
+import { RouteProgressBar } from '@/components/common/RouteProgressBar';
 import './globals.css';
 
 const geistSans = Geist({
@@ -76,6 +78,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full flex flex-col bg-[#F9F7F2] dark:bg-[#121210] text-[#121212] dark:text-[#F4F2EC]">
         <AuthSessionProvider>
+          <Suspense fallback={null}>
+            <RouteProgressBar />
+          </Suspense>
           {children}
           <Toaster richColors position="top-right" />
         </AuthSessionProvider>

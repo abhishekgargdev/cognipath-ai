@@ -12,7 +12,8 @@ import {
   CardContent, 
   MetricCard, 
   LoadingSpinner, 
-  SkeletonMetricCard 
+  SkeletonMetricCard, 
+  DashboardSkeleton
 } from '@/components/common';
 import { BookOpen, CheckCircle2, Flame, Sparkles, ArrowRight } from 'lucide-react';
 
@@ -39,16 +40,7 @@ export function DashboardClient() {
   }, []);
 
   if (isLoading || !data) {
-    return (
-      <div className="space-y-6 animate-pulse p-2">
-        <div className="h-8 w-64 bg-[#EAE7DF] dark:bg-[#252420] rounded-xs" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <SkeletonMetricCard />
-          <SkeletonMetricCard />
-          <SkeletonMetricCard />
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const { profile, currentTopic, contentStatus } = data;

@@ -11,7 +11,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { Pagination } from '@/components/common/Pagination';
-import { LoadingSpinner } from '@/components/common';
+import { LoadingSpinner, SkillsSkeleton } from '@/components/common';
 
 export interface SkillItem {
   id: string;
@@ -162,14 +162,7 @@ export function SkillsClient() {
   };
 
   if (isLoading) {
-    return (
-      <div className="max-w-5xl mx-auto p-12 text-center space-y-4">
-        <LoadingSpinner size="lg" variant="primary" />
-        <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91]">
-          Loading technical canon and competency taxonomy catalog...
-        </p>
-      </div>
-    );
+    return <SkillsSkeleton />;
   }
 
   return (

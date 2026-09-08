@@ -7,7 +7,7 @@ import {
   AlertCircle,
   ArrowRight,
 } from 'lucide-react';
-import { LoadingSpinner } from '@/components/common';
+import { LoadingSpinner, ProgressSkeleton } from '@/components/common';
 
 export interface OverviewData {
   aggregateMastery: number;
@@ -65,14 +65,7 @@ export function ProgressClient() {
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="max-w-5xl mx-auto p-12 text-center space-y-4">
-        <LoadingSpinner size="lg" variant="primary" />
-        <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91]">
-          Aggregating empirical telemetry and mastery index from database...
-        </p>
-      </div>
-    );
+    return <ProgressSkeleton />;
   }
 
   const data = overview || {

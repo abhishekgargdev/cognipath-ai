@@ -11,6 +11,7 @@ import {
   BrainCircuit,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/common';
 import { defaultSkillsCatalog } from '@/lib/data/skills-catalog';
 
 type CareerGoal =
@@ -689,15 +690,15 @@ export function OnboardingClient() {
             Previous
           </button>
 
-          <button
-            type="button"
+          <Button
             id="onboarding-next-step-btn"
+            type="button"
             onClick={() => setCurrentStep((prev) => prev + 1)}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs transition-all shadow-xs border border-[#121212] dark:border-[#F4F2EC] cursor-pointer"
+            variant="primary"
+            rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            <span>{currentStep === 5 ? 'Synthesize Syllabus' : 'Proceed'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            {currentStep === 5 ? 'Synthesize Syllabus' : 'Proceed'}
+          </Button>
         </div>
       )}
     </div>

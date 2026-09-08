@@ -12,7 +12,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useUIStore } from '@/providers/ui-store';
-import { LoadingSpinner } from '@/components/common';
+import { Button, LoadingSpinner, SettingsSkeleton } from '@/components/common';
 import { toast } from 'sonner';
 
 export function SettingsClient() {
@@ -86,14 +86,7 @@ export function SettingsClient() {
   };
 
   if (isLoading) {
-    return (
-      <div className="max-w-4xl mx-auto p-12 text-center space-y-4">
-        <LoadingSpinner size="lg" variant="primary" />
-        <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91]">
-          Loading scholar dossier & heuristic calibration parameters...
-        </p>
-      </div>
-    );
+    return <SettingsSkeleton />;
   }
 
   return (
@@ -241,14 +234,16 @@ export function SettingsClient() {
                 <Check className="w-3.5 h-3.5" /> Dossier Updated!
               </span>
             )}
-            <button
+            <Button
               type="submit"
               disabled={isSaving}
-              className="px-6 py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2A2A2A] dark:hover:bg-[#FFFFFF] text-white dark:text-[#121212] font-serif font-bold text-xs flex items-center gap-2 border border-[#121212] dark:border-[#F4F2EC] shadow-xs cursor-pointer disabled:opacity-50"
+              isLoading={isSaving}
+              loadingText="Saving Dossier..."
+              variant="primary"
+              leftIcon={<Save className="w-3.5 h-3.5" />}
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>{isSaving ? 'Saving Dossier...' : 'Commit Dossier Preferences'}</span>
-            </button>
+              Commit Dossier Preferences
+            </Button>
           </div>
         </div>
       </form>
