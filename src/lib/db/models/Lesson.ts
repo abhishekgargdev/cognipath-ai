@@ -11,6 +11,7 @@ export interface ILesson extends Document {
   estimatedMinutes: number;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   masteryLevel: number;
+  status: 'pending' | 'ready' | 'failed';
   whyYouAreLearningThis: string;
   keyTakeaways: string[];
   sections: ILessonSection[];
@@ -34,6 +35,13 @@ const LessonSchema = new Schema<ILesson>(
       default: 'Intermediate',
     },
     masteryLevel: { type: Number, required: true, default: 0 },
+    status: {
+      type: String,
+      required: true,
+      enum: ['pending', 'ready', 'failed'],
+      default: 'pending',
+      index: true,
+    },
     whyYouAreLearningThis: { type: String, required: true },
     keyTakeaways: { type: [String], default: [] },
     sections: { type: [LessonSectionSchema], default: [] },

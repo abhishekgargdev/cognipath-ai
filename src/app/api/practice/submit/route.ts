@@ -97,7 +97,10 @@ export async function POST(req: Request) {
       ];
     }
 
-    let diagnosticPayload: any;
+    // 3. Optional Single Live AI Evaluation Call
+    let diagnosticPayload: any = null;
+    let aiEvaluationStatus: 'ready' | 'unavailable' = 'ready';
+
     try {
       const failures = runnerResults
         .filter((r: any) => !r.passed)
@@ -119,21 +122,9 @@ export async function POST(req: Request) {
         },
       });
     } catch (aiErr) {
-      console.warn('[Submit API] AI Evaluation task fallback triggered:', aiErr);
-      diagnosticPayload = {
-        whatYouDidWell: isPassed
-          ? [`Successfully solved question: ${question.title}`, 'Handled edge cases accurately']
-          : ['Attempted analytical deduction for topic concept'],
-        whatCouldBeImproved: isPassed ? [] : ['Review concept documentation and execution order'],
-        conceptsDemonstrated: [
-          { name: question.title, status: isPassed ? 'Strong' : 'Needs Practice' },
-          { name: question.typeLabel || 'Practicum', status: isPassed ? 'Strong' : 'Needs Practice' },
-        ],
-        alternativeApproach: question.solutionApproaches?.[0]?.code || undefined,
-        aiRecommendation: isPassed
-          ? 'Great progress! Move forward to next subtopic monograph in syllabus.'
-          : `Review topic: ${question.title} to solidify core mechanics.`,
-      };
+      console.warn('[Submit API] AI Evaluation task unavailable or failed:', aiErr);
+      diagnosticPayload = null;
+      aiEvaluationStatus = 'unavailable';
     }
 
     // 4. Save PracticeSubmission document
@@ -154,7 +145,7 @@ export async function POST(req: Request) {
       summary: isPassed
         ? `Accurate Solution: ${question.title}`
         : `Diagnostic Revision Recommended: ${question.title}`,
-      diagnosticEvaluation: diagnosticPayload,
+      diagnosticEvaluation: diagnosticPayload || undefined,
       submittedAt: new Date(),
     });
 
@@ -210,7 +201,7 @@ export async function POST(req: Request) {
           input: failingResult.input,
           expected: failingResult.expected,
           actual: failingResult.actual,
-          commonMistakeExplanation: 'Asynchronous callbacks require appropriate queue handling and context scoping.',
+          commonMistakeExplanation: 'Review input constraints and async execution handling.',
         }
       : undefined;
 
@@ -224,14 +215,16 @@ export async function POST(req: Request) {
       spaceComplexity,
       passedTests,
       totalTests,
+      aiEvaluation: diagnosticPayload,
+      aiEvaluationStatus,
       summary: isPassed
         ? `Accurate Solution: ${question.title}`
         : `Diagnostic Revision Recommended: ${question.title}`,
-      whatYouDidWell: diagnosticPayload.whatYouDidWell || [],
-      whatCouldBeImproved: diagnosticPayload.whatCouldBeImproved || [],
-      conceptsDemonstrated: diagnosticPayload.conceptsDemonstrated || [],
-      alternativeApproach: diagnosticPayload.alternativeApproach || question.solutionApproaches?.[0]?.code,
-      aiRecommendation: diagnosticPayload.aiRecommendation || 'Review topic concept and attempt practice exercises.',
+      whatYouDidWell: diagnosticPayload?.whatYouDidWell || [],
+      whatCouldBeImproved: diagnosticPayload?.whatCouldBeImproved || [],
+      conceptsDemonstrated: diagnosticPayload?.conceptsDemonstrated || [],
+      alternativeApproach: diagnosticPayload?.alternativeApproach || question.solutionApproaches?.[0]?.code,
+      aiRecommendation: diagnosticPayload?.aiRecommendation || (aiEvaluationStatus === 'unavailable' ? 'AI evaluation service unavailable. Deterministic test results recorded.' : 'Review topic concept and attempt practice exercises.'),
       failingTestDetails,
       conceptExplanation: question.conceptExplanation,
       topSolutions: question.solutionApproaches,

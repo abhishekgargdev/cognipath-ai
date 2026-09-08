@@ -16,6 +16,7 @@ export interface IPracticeQuestion extends Document {
   typeLabel: string;
   title: string;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  status: 'pending' | 'ready' | 'failed';
   estMinutes: number;
   whyThisMatters: string;
   prompt: string;
@@ -59,6 +60,13 @@ const PracticeQuestionSchema = new Schema<IPracticeQuestion>(
       required: true,
       enum: ['Beginner', 'Intermediate', 'Advanced'],
       default: 'Intermediate',
+    },
+    status: {
+      type: String,
+      required: true,
+      enum: ['pending', 'ready', 'failed'],
+      default: 'pending',
+      index: true,
     },
     estMinutes: { type: Number, required: true, default: 15 },
     whyThisMatters: { type: String, required: true },

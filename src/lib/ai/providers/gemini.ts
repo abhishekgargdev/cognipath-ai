@@ -22,9 +22,9 @@ export async function callGeminiProvider(options: GeminiCallOptions): Promise<Ge
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const primaryModel = (process.env.GEMINI_MODEL || 'gemini-3.6-flash').trim();
+  const primaryModel = (process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim();
   const candidateModels = Array.from(
-    new Set([primaryModel, 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'])
+    new Set([primaryModel, 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'])
   );
 
   let lastError: any = null;
@@ -49,7 +49,7 @@ export async function callGeminiProvider(options: GeminiCallOptions): Promise<Ge
         config,
       });
 
-      const timeoutMs = options.timeoutMs ?? 10000;
+      const timeoutMs = options.timeoutMs ?? 15000;
       let timer: NodeJS.Timeout;
       const timeoutPromise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => {

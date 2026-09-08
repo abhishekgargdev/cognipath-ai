@@ -47,6 +47,7 @@ export const practiceQuestionSchema = z.object({
   typeLabel: z.string().min(1),
   title: z.string().min(1),
   difficulty: z.enum(['Beginner', 'Intermediate', 'Advanced']).default('Intermediate'),
+  status: z.enum(['pending', 'ready', 'failed']).default('ready'),
   estMinutes: z.number().min(1).default(15),
   whyThisMatters: z.string().min(1),
   prompt: z.string().min(1),

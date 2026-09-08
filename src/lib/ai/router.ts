@@ -36,28 +36,50 @@ class AIRouter {
     return today.toISOString().split('T')[0]; // YYYY-MM-DD
   }
 
-  private async isKeyRateLimited(keyIndex: number): Promise<boolean> {
+  private getDailyLimitPerKey(): number {
+    const limit = parseInt(process.env.GEMINI_DAILY_LIMIT_PER_KEY || '20', 10);
+    return isNaN(limit) || limit <= 0 ? 20 : limit;
+  }
+
+  private async isKeyQuotaExhausted(keyIndex: number): Promise<boolean> {
     const redis = getRedisInstance();
     if (!redis) return false;
     try {
       const redisKey = `gemini:quota:${keyIndex}:${this.getTodayDateKey()}`;
-      const isLimited = await redis.get<number | string>(redisKey);
-      return Boolean(isLimited);
+      const count = await redis.get<number | string>(redisKey);
+      if (count === null || count === undefined) return false;
+      const numCount = typeof count === 'number' ? count : parseInt(String(count), 10);
+      return !isNaN(numCount) && numCount >= this.getDailyLimitPerKey();
     } catch {
       return false;
     }
   }
 
-  private async flagKeyRateLimited(keyIndex: number): Promise<void> {
+  private async incrementKeyQuota(keyIndex: number): Promise<void> {
     const redis = getRedisInstance();
     if (!redis) return;
     try {
       const redisKey = `gemini:quota:${keyIndex}:${this.getTodayDateKey()}`;
-      // Flag rate limit for 60 seconds (1 minute per-minute RPM window), not 24 hours
-      await redis.set(redisKey, 1, { ex: 60 });
-      console.warn(`[AI Router] Gemini key index ${keyIndex} flagged as rate limited for 60 seconds.`);
+      const newCount = await redis.incr(redisKey);
+      if (newCount === 1) {
+        // First request today for this key, set 24h TTL
+        await redis.expire(redisKey, 86400);
+      }
     } catch {
-      // Upstash Redis connection unavailable or offline, skip remote flagging
+      // Redis offline or error, proceed
+    }
+  }
+
+  private async flagKeyExhausted(keyIndex: number): Promise<void> {
+    const redis = getRedisInstance();
+    if (!redis) return;
+    try {
+      const redisKey = `gemini:quota:${keyIndex}:${this.getTodayDateKey()}`;
+      const limit = this.getDailyLimitPerKey();
+      await redis.set(redisKey, limit, { ex: 86400 });
+      console.warn(`[AI Router] Gemini key index ${keyIndex} flagged as daily quota exhausted (${limit} calls) for date ${this.getTodayDateKey()}`);
+    } catch {
+      // Redis offline
     }
   }
 
@@ -72,9 +94,9 @@ class AIRouter {
         const keyIndex1Based = index + 1;
         const apiKey = geminiKeys[index];
 
-        const isExhausted = await this.isKeyRateLimited(keyIndex1Based);
+        const isExhausted = await this.isKeyQuotaExhausted(keyIndex1Based);
         if (isExhausted) {
-          console.log(`[AI Router] Skipping Gemini key #${keyIndex1Based} (Redis quota limit active)`);
+          console.log(`[AI Router] Skipping Gemini key #${keyIndex1Based} (Daily quota limit reached for ${this.getTodayDateKey()})`);
           continue;
         }
 
@@ -90,6 +112,9 @@ class AIRouter {
               temperature: options.temperature,
               timeoutMs: options.timeoutMs ?? 15000,
             });
+
+            // Increment per-day Redis call counter
+            await this.incrementKeyQuota(keyIndex1Based);
 
             // Advance round-robin pointer for next call
             this.currentKeyIndex = (index + 1) % geminiKeys.length;
@@ -110,7 +135,7 @@ class AIRouter {
 
             if (isRateLimit) {
               console.warn(`[AI Router] Gemini key #${keyIndex1Based} hit rate limit 429: ${errorMsg}`);
-              await this.flagKeyRateLimited(keyIndex1Based);
+              await this.flagKeyExhausted(keyIndex1Based);
               break; // Break retry loop, move to next Gemini key
             }
 
@@ -125,8 +150,8 @@ class AIRouter {
       }
     }
 
-    // All Gemini keys failed or rate-limited -> Fallback to NVIDIA
-    console.warn('[AI Router] All Gemini API keys rate-limited or unavailable. Failing over to NVIDIA provider...');
+    // All Gemini keys failed or daily quota exhausted -> Fallback to NVIDIA if enabled
+    console.warn('[AI Router] All Gemini API keys rate-limited or daily quota exhausted. Checking NVIDIA fallback...');
     try {
       const nvidiaResult = await callNvidiaProvider({
         prompt: options.prompt,
@@ -142,8 +167,8 @@ class AIRouter {
         modelUsed: nvidiaResult.modelUsed,
       };
     } catch (nvidiaErr: any) {
-      console.error('[AI Router] Both Gemini and NVIDIA providers failed!', nvidiaErr);
-      throw new Error(`AI Service Unavailable: Gemini exhausted and NVIDIA fallback failed (${nvidiaErr?.message || nvidiaErr})`);
+      console.error('[AI Router] Gemini keys exhausted and NVIDIA fallback unavailable/failed:', nvidiaErr?.message || nvidiaErr);
+      throw new Error(`AI Service Unavailable: Gemini daily quotas exhausted and NVIDIA fallback unavailable (${nvidiaErr?.message || nvidiaErr})`);
     }
   }
 }

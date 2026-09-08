@@ -131,6 +131,9 @@ export function PracticeClient() {
   const [selectedSolutionIdx, setSelectedSolutionIdx] = useState<number>(0);
   const [hasCopiedCode, setHasCopiedCode] = useState<boolean>(false);
 
+  const [dailyStatus, setDailyStatus] = useState<'ready' | 'partial' | 'pending'>('ready');
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
   // Fetch daily practice set from /api/practice/daily
   useEffect(() => {
     async function loadDailySet() {
@@ -140,6 +143,8 @@ export function PracticeClient() {
         if (!res.ok) throw new Error('Failed to load daily set');
         const data = await res.json();
         setQuestions(data.questions || []);
+        setDailyStatus(data.status || 'ready');
+        setPendingCount(data.pendingCount || 0);
         setUserStats({
           completedQuestionsToday: data.completedQuestionsToday || 0,
           totalQuestionsTargetToday: data.totalQuestionsTargetToday || 5,
@@ -273,12 +278,20 @@ export function PracticeClient() {
     );
   }
 
-  if (!currentQuestion) {
+  if (!currentQuestion || questions.length === 0) {
     return (
-      <div className="max-w-6xl mx-auto p-12 text-center space-y-4">
-        <AlertCircle className="w-8 h-8 text-[#8B2635] mx-auto" />
-        <h2 className="text-xl font-serif font-black">No Practice Questions Found</h2>
-        <p className="text-sm font-serif text-[#5C5852]">Please verify database seeding or try refreshing.</p>
+      <div className="max-w-4xl mx-auto p-8 sm:p-12 text-center space-y-6 animate-in fade-in duration-200">
+        <div className="p-8 sm:p-12 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] shadow-xs space-y-4 border-t-3 border-t-[#8B2635] dark:border-t-[#E08A95]">
+          <div className="flex justify-center">
+            <LoadingSpinner size="lg" variant="primary" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#121212] dark:text-[#F4F2EC]">
+            Today's questions are still being generated
+          </h2>
+          <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91] max-w-lg mx-auto leading-relaxed">
+            The background cron engine is populating your topic practice pool. Please check back shortly.
+          </p>
+        </div>
       </div>
     );
   }

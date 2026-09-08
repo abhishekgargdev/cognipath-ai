@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { UserProfile } from '@/lib/db/models/UserProfile';
+import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
+import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
+import { Lesson } from '@/lib/db/models/Lesson';
 import { PracticeQuestion } from '@/lib/db/models/PracticeQuestion';
 import { AiRecommendation } from '@/lib/db/models/AiRecommendation';
+import { generateLessonTask } from '@/lib/ai/tasks/generate-lesson';
 import { generateQuestionTask } from '@/lib/ai/tasks/generate-question';
+import { recommendSkillsTask } from '@/lib/ai/tasks/recommend-skills';
 
 const QUESTION_TYPES: Array<'concept' | 'mcq' | 'output_prediction' | 'coding' | 'debugging' | 'scenario'> = [
+  'coding',
   'mcq',
   'output_prediction',
   'concept',
-  'coding',
   'debugging',
 ];
 
 export async function GET(req: Request) {
   try {
-    // 1. Authorization header check against CRON_SECRET
+    // 1. Authorization check
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = req.headers.get('authorization');
 
@@ -29,89 +34,220 @@ export async function GET(req: Request) {
 
     await connectToDatabase();
 
-    // 2. Find users active in the last 7 days
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const activeProfiles = await UserProfile.find({
-      updatedAt: { $gte: sevenDaysAgo },
-    }).lean();
+    const MAX_AI_CALLS = parseInt(process.env.AI_CALLS_PER_CRON_RUN || '15', 10);
+    let totalAiCalls = 0;
+    let lessonsGenerated = 0;
+    let questionsGenerated = 0;
+    let recommendationsRefreshed = 0;
 
-    const topicSet = new Set<string>();
+    // 2. Step A: Advance active users' roadmaps based on prerequisites and unlockDay
+    const activeProfiles = await UserProfile.find().lean();
+    const topicDemandMap = new Map<string, number>();
+
     for (const profile of activeProfiles) {
-      if (profile.currentTopicId) {
-        topicSet.add(profile.currentTopicId);
+      const userDays = Math.floor(
+        (Date.now() - new Date(profile.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const userProgress = await UserNodeProgress.find({ userId: profile.userId });
+      const completedNodeIds = new Set(
+        userProgress
+          .filter((p) => p.status === 'completed' || p.masteryPercent >= 80)
+          .map((p) => p.nodeId)
+      );
+
+      for (const progress of userProgress) {
+        if (progress.status === 'locked') {
+          const nodeDoc = await RoadmapNode.findOne({ id: progress.nodeId }).lean();
+          const prereqs = nodeDoc?.prerequisites || [];
+          const prereqsMet = prereqs.every((prereqId) => completedNodeIds.has(prereqId));
+          const unlockDayMet = (progress.unlockDay ?? 0) <= userDays + 1;
+
+          if (prereqsMet && unlockDayMet) {
+            progress.status = 'available';
+            await progress.save();
+          }
+        }
+
+        if (progress.status === 'available' || progress.status === 'in_progress') {
+          const currentCount = topicDemandMap.get(progress.nodeId) || 0;
+          topicDemandMap.set(progress.nodeId, currentCount + 1);
+        }
       }
     }
 
-    // Default fallback topic if no active profiles found
-    if (topicSet.size === 0) {
-      topicSet.add('js-event-loop');
+    // Default topics if database is newly initialized
+    if (topicDemandMap.size === 0) {
+      topicDemandMap.set('js-event-loop', 1);
+      topicDemandMap.set('js-closures-memory', 1);
+      topicDemandMap.set('async-promises', 1);
     }
 
-    const activeTopics = Array.from(topicSet);
+    // Sort distinct topicIds by highest user demand first
+    const prioritizedTopics = Array.from(topicDemandMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([topicId]) => topicId);
 
-    // 3. Maintenance: Ensure tomorrow's practice pool has enough questions (cap AI calls at 10 per run)
-    const MAX_AI_CALLS = 10;
-    let totalAiCalls = 0;
-    let questionsGeneratedCount = 0;
-
-    for (const topicId of activeTopics) {
+    // 3. Step B & C: Lessons Generation (Shared Pool)
+    for (const topicId of prioritizedTopics) {
       if (totalAiCalls >= MAX_AI_CALLS) break;
 
-      const existingCount = await PracticeQuestion.countDocuments({ topicId });
+      let lessonDoc = await Lesson.findOne({ topicId });
 
-      if (existingCount < 5) {
-        const needed = 5 - existingCount;
+      if (!lessonDoc || lessonDoc.status !== 'ready') {
+        if (!lessonDoc) {
+          lessonDoc = await Lesson.create({
+            id: `lesson-${topicId}`,
+            topicId,
+            title: topicId.replace(/[-_]/g, ' ').toUpperCase(),
+            subtitle: 'Pedagogical synthesis in progress...',
+            estimatedMinutes: 25,
+            difficulty: 'Intermediate',
+            masteryLevel: 0,
+            whyYouAreLearningThis: 'Synthesizing core mechanics.',
+            keyTakeaways: [],
+            sections: [],
+            antiPatterns: [],
+            knowledgeCheck: [],
+            status: 'pending',
+          });
+        }
+
+        try {
+          totalAiCalls++;
+          const generated = await generateLessonTask({
+            topic: topicId.replace(/[-_]/g, ' '),
+            topicId,
+          });
+
+          await Lesson.updateOne(
+            { topicId },
+            {
+              title: generated.title,
+              subtitle: generated.subtitle,
+              estimatedMinutes: generated.estimatedMinutes,
+              difficulty: generated.difficulty,
+              masteryLevel: generated.masteryLevel || 0,
+              whyYouAreLearningThis: generated.whyYouAreLearningThis,
+              keyTakeaways: generated.keyTakeaways || [],
+              sections: generated.sections || [],
+              antiPatterns: generated.antiPatterns || [],
+              knowledgeCheck: generated.knowledgeCheck || [],
+              status: 'ready',
+            }
+          );
+          lessonsGenerated++;
+        } catch (genErr) {
+          console.warn(`[Daily Cron] Lesson generation failed for topic ${topicId}:`, genErr);
+          await Lesson.updateOne({ topicId }, { status: 'failed' });
+        }
+      }
+    }
+
+    // 4. Step D: Top up Practice Question pools for (topicId, difficulty) up to 8 ready questions
+    for (const topicId of prioritizedTopics) {
+      if (totalAiCalls >= MAX_AI_CALLS) break;
+
+      const readyCount = await PracticeQuestion.countDocuments({ topicId, status: 'ready' });
+      const TARGET_QUESTION_THRESHOLD = 8;
+
+      if (readyCount < TARGET_QUESTION_THRESHOLD) {
+        const needed = TARGET_QUESTION_THRESHOLD - readyCount;
 
         for (let i = 0; i < needed; i++) {
           if (totalAiCalls >= MAX_AI_CALLS) break;
 
-          const qType = QUESTION_TYPES[(existingCount + i) % QUESTION_TYPES.length];
-          const questionId = `q_${topicId}_${existingCount + i + 1}_${Date.now()}`;
+          const qType = QUESTION_TYPES[(readyCount + i) % QUESTION_TYPES.length];
+          const questionId = `q_${topicId}_${readyCount + i + 1}_${Date.now()}`;
+
+          // Create pending placeholder doc immediately
+          const placeholder = await PracticeQuestion.create({
+            id: questionId,
+            topicId,
+            type: qType,
+            typeLabel: qType.toUpperCase(),
+            title: 'Practicum Problem Preparing...',
+            difficulty: 'Intermediate',
+            estMinutes: 15,
+            whyThisMatters: 'Applied problem synthesis',
+            prompt: 'Question content is currently being generated by the background engine.',
+            sequenceOrder: readyCount + i + 1,
+            status: 'pending',
+          });
 
           try {
             totalAiCalls++;
             const aiGenerated = await generateQuestionTask({
-              topic: topicId.replace(/-/g, ' '),
+              topic: topicId.replace(/[-_]/g, ' '),
               topicId,
               difficulty: 'Intermediate',
               type: qType,
             });
 
-            await PracticeQuestion.findOneAndUpdate(
-              { id: aiGenerated.id || questionId },
+            await PracticeQuestion.updateOne(
+              { id: questionId },
               {
                 ...aiGenerated,
                 id: aiGenerated.id || questionId,
                 topicId,
-                sequenceOrder: existingCount + i + 1,
-              },
-              { upsert: true, returnDocument: 'after' }
+                sequenceOrder: readyCount + i + 1,
+                status: 'ready',
+              }
             );
-
-            questionsGeneratedCount++;
+            questionsGenerated++;
           } catch (genErr) {
             console.warn(`[Daily Cron] Question generation failed for topic ${topicId}:`, genErr);
+            await PracticeQuestion.updateOne({ id: questionId }, { status: 'failed' });
           }
         }
       }
     }
 
-    // 4. Refresh stale AiRecommendation rows (older than 3 days)
+    // 5. Step E: Refresh stale AiRecommendation docs older than 3 days
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-    const deletedStaleRes = await AiRecommendation.deleteMany({
-      status: 'pending',
+    const staleRecs = await AiRecommendation.find({
       createdAt: { $lt: threeDaysAgo },
-    });
+    })
+      .limit(3)
+      .lean();
+
+    for (const rec of staleRecs) {
+      if (totalAiCalls >= MAX_AI_CALLS) break;
+      try {
+        totalAiCalls++;
+        const newRecs = await recommendSkillsTask({
+          userId: rec.userId,
+          targetGoal: 'Full Stack Architect',
+          weakConcepts: ['js-event-loop'],
+          completedTopics: [],
+        });
+        if (newRecs && newRecs.length > 0) {
+          await AiRecommendation.updateOne(
+            { _id: rec._id },
+            { ...newRecs[0], status: 'ready', updatedAt: new Date() }
+          );
+          recommendationsRefreshed++;
+        }
+      } catch (recErr) {
+        console.warn(`[Daily Cron] Recommendation refresh failed for user ${rec.userId}:`, recErr);
+      }
+    }
+
+    // Clean up failed pending placeholders older than 1 hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    await PracticeQuestion.deleteMany({ status: 'pending', createdAt: { $lt: oneHourAgo } });
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       metrics: {
-        activeUsersCount: activeProfiles.length,
-        activeTopicsProcessed: activeTopics,
-        questionsGeneratedCount,
+        activeUsersProcessed: activeProfiles.length,
+        prioritizedTopics,
         totalAiCalls,
-        staleRecommendationsCleaned: deletedStaleRes.deletedCount || 0,
+        maxAiCallsAllowed: MAX_AI_CALLS,
+        lessonsGenerated,
+        questionsGenerated,
+        recommendationsRefreshed,
       },
     });
   } catch (error: any) {

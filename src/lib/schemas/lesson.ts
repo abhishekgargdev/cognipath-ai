@@ -40,6 +40,7 @@ export const lessonSchema = z.object({
   estimatedMinutes: z.number().min(1).default(30),
   difficulty: z.enum(['Beginner', 'Intermediate', 'Advanced']).default('Intermediate'),
   masteryLevel: z.number().default(0),
+  status: z.enum(['pending', 'ready', 'failed']).default('ready'),
   whyYouAreLearningThis: z.string().min(1),
   keyTakeaways: z.array(z.string()).default([]),
   sections: z.array(lessonSectionSchema).default([]),

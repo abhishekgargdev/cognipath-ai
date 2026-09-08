@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/common';
+import { Button, LoadingSpinner } from '@/components/common';
 import {
   Clock,
   CheckCircle2,
@@ -55,6 +55,7 @@ export interface ClientLesson {
   estimatedMinutes: number;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   masteryLevel: number;
+  status?: 'pending' | 'ready' | 'failed';
   whyYouAreLearningThis: string;
   keyTakeaways: string[];
   sections: ClientLessonSection[];
@@ -71,6 +72,50 @@ export function LearnClient({ lesson }: LearnClientProps) {
 
   // Knowledge check state
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+
+  if (lesson.status === 'pending') {
+    return (
+      <div id="learn-view" className="max-w-4xl mx-auto p-8 text-center space-y-6 animate-in fade-in duration-200">
+        <div className="p-8 sm:p-12 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] shadow-xs space-y-4 border-t-3 border-t-[#8B2635] dark:border-t-[#E08A95]">
+          <div className="flex justify-center">
+            <LoadingSpinner size="lg" variant="primary" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#121212] dark:text-[#F4F2EC]">
+            Your lesson is being prepared
+          </h2>
+          <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91] max-w-lg mx-auto leading-relaxed">
+            The background curriculum engine is synthesizing this architectural monograph. This usually takes a few minutes — check back shortly.
+          </p>
+          <div className="pt-4 flex items-center justify-center gap-3">
+            <Button variant="secondary" size="sm" onClick={() => router.push('/roadmap')}>
+              Return to Topological Roadmap
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (lesson.status === 'failed') {
+    return (
+      <div id="learn-view" className="max-w-4xl mx-auto p-8 text-center space-y-6 animate-in fade-in duration-200">
+        <div className="p-8 sm:p-12 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] shadow-xs space-y-4 border-t-3 border-t-[#8B2635] dark:border-t-[#E08A95]">
+          <AlertTriangle className="w-10 h-10 text-[#8B2635] dark:text-[#E08A95] mx-auto" />
+          <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#121212] dark:text-[#F4F2EC]">
+            Lesson Preparation Queued
+          </h2>
+          <p className="text-sm font-serif italic text-[#5C5852] dark:text-[#9E9A91] max-w-lg mx-auto leading-relaxed">
+            Content synthesis for this topic is queued for the next background engine run.
+          </p>
+          <div className="pt-4 flex items-center justify-center gap-3">
+            <Button variant="secondary" size="sm" onClick={() => router.push('/roadmap')}>
+              Return to Topological Roadmap
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSelectOption = (questionId: string, optionIndex: number) => {
     setSelectedAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));

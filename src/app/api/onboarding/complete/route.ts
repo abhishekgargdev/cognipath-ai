@@ -6,7 +6,7 @@ import { UserProfile } from '@/lib/db/models/UserProfile';
 import { RoadmapMilestone } from '@/lib/db/models/RoadmapMilestone';
 import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
 import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
-import { generateRoadmapTask } from '@/lib/ai/tasks/generate-roadmap';
+import { getCurriculumTemplate } from '@/lib/curriculum/templates';
 
 const onboardingBodySchema = z.object({
   targetGoal: z.string().min(1),
@@ -56,15 +56,11 @@ export async function POST(req: Request) {
       { upsert: true, returnDocument: 'after' }
     );
 
-    // 2. Generate Roadmap via AI Abstraction Layer
-    const roadmapData = await generateRoadmapTask({
-      targetGoal: finalGoal,
-      skillLevel: data.experienceLevel,
-      existingSkills: data.selectedSkills.map((s) => s.name),
-    });
+    // 2. Select matching Curriculum Template (instant deterministic template cloning)
+    const template = getCurriculumTemplate(finalGoal);
 
     // 3. Upsert RoadmapMilestones & RoadmapNodes in Mongo
-    for (const milestone of roadmapData.milestones) {
+    for (const milestone of template.milestones) {
       await RoadmapMilestone.findOneAndUpdate(
         { id: milestone.id },
         { ...milestone, targetGoal: finalGoal },
@@ -72,17 +68,32 @@ export async function POST(req: Request) {
       );
     }
 
-    for (const node of roadmapData.nodes) {
+    for (const node of template.nodes) {
       await RoadmapNode.findOneAndUpdate(
         { id: node.id },
-        node,
+        {
+          id: node.id,
+          milestoneId: node.milestoneId,
+          title: node.title,
+          category: node.category,
+          categoryLabel: node.categoryLabel,
+          status: node.sequenceOrder === 1 ? 'available' : 'locked',
+          difficulty: node.difficulty,
+          estMinutes: node.estMinutes,
+          masteryPercent: 0,
+          prerequisites: node.prerequisites,
+          whyItMatters: node.whyItMatters,
+          description: node.description,
+          sequenceOrder: node.sequenceOrder,
+          subtopics: node.subtopics,
+        },
         { upsert: true }
       );
     }
 
     // 4. Initialize UserNodeProgress documents
-    for (let i = 0; i < roadmapData.nodes.length; i++) {
-      const node = roadmapData.nodes[i];
+    for (let i = 0; i < template.nodes.length; i++) {
+      const node = template.nodes[i];
       const initialStatus =
         i === 0 || !node.prerequisites || node.prerequisites.length === 0
           ? 'available'
@@ -95,24 +106,25 @@ export async function POST(req: Request) {
           nodeId: node.id,
           status: initialStatus,
           masteryPercent: 0,
+          unlockDay: node.unlockDay ?? i,
         },
         { upsert: true }
       );
     }
 
     // Set current topic ID on profile to first available node
-    if (roadmapData.nodes.length > 0) {
+    if (template.nodes.length > 0) {
       await UserProfile.updateOne(
         { userId: session.user.id },
-        { currentTopicId: roadmapData.nodes[0].id }
+        { currentTopicId: template.nodes[0].id }
       );
     }
 
     return NextResponse.json({
       success: true,
       goal: finalGoal,
-      milestonesCount: roadmapData.milestones.length,
-      nodesCount: roadmapData.nodes.length,
+      milestonesCount: template.milestones.length,
+      nodesCount: template.nodes.length,
     });
   } catch (error: any) {
     console.error('[Onboarding Complete API Error]:', error);
@@ -122,3 +134,4 @@ export async function POST(req: Request) {
     );
   }
 }
+
