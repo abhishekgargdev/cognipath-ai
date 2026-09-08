@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { signOut } from 'next-auth/react';
 import { useUIStore } from '@/providers/ui-store';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { 
   Search, 
   Bell, 
@@ -11,7 +21,10 @@ import {
   Sparkles, 
   ArrowRight,
   Menu,
-  X
+  X,
+  Settings,
+  Map,
+  LogOut,
 } from 'lucide-react';
 
 export interface TopbarUser {
@@ -153,21 +166,23 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       {/* Main Topbar Row */}
       <div className="flex items-center justify-between px-4 sm:px-6 h-15">
-        {/* Left: Mobile menu button & breadcrumb */}
+        {/* Left: Sidebar toggle button & breadcrumb */}
         <div className="flex items-center gap-3">
           <button
-            id="mobile-sidebar-toggle-btn"
+            id="sidebar-toggle-btn"
             onClick={handleToggleSidebar}
-            className="md:hidden p-2 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] text-[#121212] dark:text-[#F4F2EC] hover:bg-[#EAE7DF] dark:hover:bg-[#1F1E1A]"
-            aria-label="Toggle Navigation Menu"
+            className="p-2 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] text-[#121212] dark:text-[#F4F2EC] hover:bg-[#EAE7DF] dark:hover:bg-[#1F1E1A] cursor-pointer"
+            aria-label="Toggle Navigation Sidebar"
+            title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
-            {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isSidebarOpen ? <X className="w-5 h-5 md:hidden" /> : <Menu className="w-5 h-5" />}
+            {isSidebarOpen && <Menu className="w-5 h-5 hidden md:block text-[#8B2635] dark:text-[#E08A95]" />}
           </button>
 
-          <div className="flex items-center gap-1.5 sm:hidden cursor-pointer" onClick={() => onNavigate?.('dashboard')}>
+          <Link href="/dashboard" className="flex items-center gap-1.5 sm:hidden cursor-pointer">
             <span className="font-serif font-black tracking-wider text-sm uppercase text-[#121212] dark:text-[#F4F2EC]">CogniPath</span>
             <span className="text-[9px] font-mono tracking-widest uppercase border border-[#8B2635]/40 bg-[#8B2635]/10 text-[#8B2635] dark:text-[#E08A95] px-1 py-0.2 rounded-xs font-bold">AI</span>
-          </div>
+          </Link>
 
           <div className="hidden sm:flex items-center gap-2.5 text-xs">
             <span className="font-serif font-bold text-sm tracking-tight text-[#121212] dark:text-[#F4F2EC]">{user.targetGoal}</span>
@@ -193,7 +208,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           </kbd>
         </button>
 
-        {/* Right: Gamification, Theme, Notifications, Avatar */}
+        {/* Right: Gamification, Theme, Notifications, Avatar Dropdown */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Streak Badge */}
           <div 
@@ -289,23 +304,53 @@ export const Topbar: React.FC<TopbarProps> = ({
             )}
           </div>
 
-          {/* User Profile Avatar */}
-          <button
-            id="user-profile-avatar-btn"
-            onClick={() => onNavigate?.('settings')}
-            className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] hover:border-[#121212] dark:hover:border-[#F4F2EC] bg-[#FFFFFF] dark:bg-[#181714] transition-colors cursor-pointer shadow-xs"
-          >
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              className="w-6 h-6 rounded-xs object-cover border border-[#DCD9D1] dark:border-[#2C2A26]"
-            />
-            <span className="text-xs font-serif font-bold text-[#121212] dark:text-[#F4F2EC] hidden md:inline">
-              {user.name.split(' ')[0]}
-            </span>
-          </button>
+          {/* User Profile Avatar Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="outline-none">
+              <div
+                id="user-profile-avatar-btn"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] hover:border-[#121212] dark:hover:border-[#F4F2EC] bg-[#FFFFFF] dark:bg-[#181714] transition-colors cursor-pointer shadow-xs select-none"
+              >
+                <img
+                  src={user.avatarUrl}
+                  alt={user.name}
+                  className="w-6 h-6 rounded-xs object-cover border border-[#DCD9D1] dark:border-[#2C2A26]"
+                />
+                <span className="text-xs font-serif font-bold text-[#121212] dark:text-[#F4F2EC] hidden md:inline">
+                  {user.name.split(' ')[0]}
+                </span>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel className="font-serif">
+                <div className="font-bold text-xs">{user.name}</div>
+                <div className="text-[10px] font-mono text-[#5C5852] dark:text-[#9E9A91] uppercase">
+                  {user.targetGoal}
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="p-0">
+                <Link href="/settings" className="flex items-center gap-2 w-full px-2 py-1.5 text-xs">
+                  <Settings className="w-4 h-4" /> Account Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="p-0">
+                <Link href="/roadmap" className="flex items-center gap-2 w-full px-2 py-1.5 text-xs">
+                  <Map className="w-4 h-4" /> My Roadmap
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => signOut({ callbackUrl: '/' })}
+                className="flex items-center gap-2 text-red-600 dark:text-red-400 cursor-pointer text-xs font-bold"
+              >
+                <LogOut className="w-4 h-4" /> Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
   );
 };
+

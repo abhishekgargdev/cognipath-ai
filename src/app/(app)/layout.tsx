@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { UserProfile } from '@/lib/db/models/UserProfile';
+import { AiRecommendation } from '@/lib/db/models/AiRecommendation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 
@@ -20,6 +21,10 @@ export default async function AppLayout({
 
   await connectToDatabase();
   const profile = await UserProfile.findOne({ userId: session.user.id }).lean();
+  const newRecommendationsCount = await AiRecommendation.countDocuments({
+    userId: session.user.id,
+    status: 'pending',
+  });
 
   const headerList = await headers();
   const pathname = headerList.get('x-pathname') || '';
@@ -52,7 +57,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#F9F7F2] dark:bg-[#121210] text-[#121212] dark:text-[#F4F2EC]">
-      <Sidebar user={user} />
+      <Sidebar user={user} newRecommendationsCount={newRecommendationsCount} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar user={user} />
         <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
