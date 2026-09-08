@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { CodeEditor } from '@/components/common/CodeEditor';
 import { Button, LoadingSpinner, PracticeEvaluationSkeleton } from '@/components/common';
+import { EvaluationResult } from '@/types';
 
 export interface PracticeQuestionItem {
   id: string;
@@ -51,52 +52,6 @@ export interface PracticeQuestionItem {
   testCases?: any[];
   solutionApproaches?: any[];
   conceptExplanation?: any;
-}
-
-export interface EvaluationResult {
-  submissionId?: string;
-  passed: boolean;
-  score: number;
-  summary: string;
-  runtimeMs: number;
-  memoryMb: number;
-  timeComplexity: string;
-  spaceComplexity: string;
-  passedTests: number;
-  totalTests: number;
-  whatYouDidWell: string[];
-  whatCouldBeImproved: string[];
-  conceptsDemonstrated: Array<{ name: string; status: string }>;
-  alternativeApproach?: string;
-  aiRecommendation: string;
-  failingTestDetails?: {
-    input: string;
-    expected: string;
-    actual: string;
-    commonMistakeExplanation?: string;
-  };
-  conceptExplanation?: {
-    topic: string;
-    theoreticalFoundation: string;
-    underlyingMechanics: string;
-    stepByStepTrace: string[];
-    architecturalTakeaways: string;
-    commonPitfalls: string[];
-  };
-  topSolutions?: Array<{
-    id: string;
-    rank: number;
-    title: string;
-    subtitle: string;
-    paradigm: string;
-    timeComplexity: string;
-    spaceComplexity: string;
-    code: string;
-    explanation: string;
-    pros: string[];
-    cons: string[];
-    whenToUse: string;
-  }>;
 }
 
 export function PracticeClient() {
@@ -857,7 +812,7 @@ export function PracticeClient() {
                           <span>Demonstrated Strengths</span>
                         </h4>
                         <ul className="space-y-1.5">
-                          {evaluationResult.whatYouDidWell.map((well, idx) => (
+                          {(evaluationResult.whatYouDidWell ?? []).map((well, idx) => (
                             <li key={idx} className="text-xs font-serif text-[#121212] dark:text-[#EAE7DF] flex items-start gap-2 leading-relaxed">
                               <span className="text-[#1F3A2B] dark:text-[#4E876A] font-bold">✓</span>
                               <span>{well}</span>
@@ -866,13 +821,31 @@ export function PracticeClient() {
                         </ul>
                       </div>
 
+                      {/* What could be improved */}
+                      {(evaluationResult.whatCouldBeImproved ?? []).length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#8B2635] dark:text-[#E08A95] flex items-center gap-1.5">
+                            <AlertCircle className="w-4 h-4 text-[#8B2635] dark:text-[#E08A95]" />
+                            <span>Areas for Targeted Improvement</span>
+                          </h4>
+                          <ul className="space-y-1.5">
+                            {(evaluationResult.whatCouldBeImproved ?? []).map((imp, idx) => (
+                              <li key={idx} className="text-xs font-serif text-[#121212] dark:text-[#EAE7DF] flex items-start gap-2 leading-relaxed">
+                                <span className="text-[#8B2635] dark:text-[#E08A95] font-bold">•</span>
+                                <span>{imp}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
                       {/* Concepts Demonstrated */}
                       <div className="space-y-2">
                         <h4 className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#5C5852] dark:text-[#9E9A91]">
                           Competencies Assessed
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {evaluationResult.conceptsDemonstrated.map((c, idx) => (
+                          {(evaluationResult.conceptsDemonstrated ?? []).map((c, idx) => (
                             <span
                               key={idx}
                               className="px-2.5 py-1 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] text-xs font-serif flex items-center gap-2 text-[#121212] dark:text-[#F4F2EC]"
@@ -1008,7 +981,7 @@ export function PracticeClient() {
                           Select From Canonical Implementation Patterns:
                         </span>
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                          {activeSolutions.map((sol: any, idx: number) => {
+                          {(activeSolutions ?? []).map((sol: any, idx: number) => {
                             const isSelected = selectedSolutionIdx === idx;
                             return (
                               <button
@@ -1124,7 +1097,7 @@ export function PracticeClient() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#DCD9D1] dark:divide-[#2C2A26]">
-                            {activeSolutions.map((sol: any, idx: number) => (
+                            {(activeSolutions ?? []).map((sol: any, idx: number) => (
                               <tr key={sol.id || idx} className="hover:bg-[#F4F1EA]/50 dark:hover:bg-[#201F1B] transition-colors">
                                 <td className="p-3">
                                   <span className="font-mono text-[10px] font-bold text-[#8B2635] dark:text-[#E08A95] mr-1.5">

@@ -184,6 +184,7 @@ export interface ConceptExplanation {
 }
 
 export interface EvaluationResult {
+  submissionId?: string;
   score: number;
   passed: boolean;
   passedTests: number;
@@ -194,17 +195,19 @@ export interface EvaluationResult {
   spaceComplexity: string;
   summary: string;
   whatYouDidWell: string[];
-  conceptsDemonstrated: { name: string; status: 'Strong' | 'Good' | 'Needs Practice' }[];
+  conceptsDemonstrated: { name: string; status: string }[];
   whatCouldBeImproved: string[];
+  topSolutions: SolutionApproach[];
   alternativeApproach?: string;
   conceptExplanation?: ConceptExplanation;
-  topSolutions?: SolutionApproach[];
   aiRecommendation: string;
+  aiEvaluationStatus?: 'ready' | 'unavailable';
+  aiEvaluation?: any;
   failingTestDetails?: {
     input: string;
     expected: string;
     actual: string;
-    commonMistakeExplanation: string;
+    commonMistakeExplanation?: string;
   };
 }
 

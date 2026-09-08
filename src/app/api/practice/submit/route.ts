@@ -9,6 +9,7 @@ import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
 import { DailyStreakLog } from '@/lib/db/models/DailyStreakLog';
 import { execute } from '@/lib/code-runner';
 import { evaluateAnswerTask } from '@/lib/ai/tasks/evaluate-answer';
+import { EvaluationResult } from '@/types';
 
 const submitBodySchema = z.object({
   questionId: z.string().min(1),
@@ -205,8 +206,8 @@ export async function POST(req: Request) {
         }
       : undefined;
 
-    return NextResponse.json({
-      submissionId: submission._id,
+    const evaluationResponse: EvaluationResult = {
+      submissionId: String(submission._id),
       passed: isPassed,
       score,
       runtimeMs,
@@ -220,15 +221,25 @@ export async function POST(req: Request) {
       summary: isPassed
         ? `Accurate Solution: ${question.title}`
         : `Diagnostic Revision Recommended: ${question.title}`,
-      whatYouDidWell: diagnosticPayload?.whatYouDidWell || [],
-      whatCouldBeImproved: diagnosticPayload?.whatCouldBeImproved || [],
-      conceptsDemonstrated: diagnosticPayload?.conceptsDemonstrated || [],
-      alternativeApproach: diagnosticPayload?.alternativeApproach || question.solutionApproaches?.[0]?.code,
-      aiRecommendation: diagnosticPayload?.aiRecommendation || (aiEvaluationStatus === 'unavailable' ? 'AI evaluation service unavailable. Deterministic test results recorded.' : 'Review topic concept and attempt practice exercises.'),
+      whatYouDidWell: Array.isArray(diagnosticPayload?.whatYouDidWell) ? diagnosticPayload.whatYouDidWell : [],
+      whatCouldBeImproved: Array.isArray(diagnosticPayload?.whatCouldBeImproved)
+        ? diagnosticPayload.whatCouldBeImproved
+        : [],
+      conceptsDemonstrated: Array.isArray(diagnosticPayload?.conceptsDemonstrated)
+        ? diagnosticPayload.conceptsDemonstrated
+        : [],
+      alternativeApproach: diagnosticPayload?.alternativeApproach || question.solutionApproaches?.[0]?.code || '',
+      aiRecommendation:
+        diagnosticPayload?.aiRecommendation ||
+        (aiEvaluationStatus === 'unavailable'
+          ? 'AI evaluation service unavailable. Deterministic test results recorded.'
+          : 'Review topic concept and attempt practice exercises.'),
       failingTestDetails,
       conceptExplanation: question.conceptExplanation,
-      topSolutions: question.solutionApproaches,
-    });
+      topSolutions: Array.isArray(question.solutionApproaches) ? question.solutionApproaches : [],
+    };
+
+    return NextResponse.json(evaluationResponse);
   } catch (error: any) {
     console.error('[Submit Practice API Error]:', error);
     return NextResponse.json(
