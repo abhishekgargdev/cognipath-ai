@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { connectToDatabase } from '@/lib/db/mongoose';
@@ -18,9 +19,12 @@ export async function POST(req: Request) {
     await connectToDatabase();
 
     // 1. Fetch question from Mongo
-    const question = await PracticeQuestion.findOne({
-      $or: [{ id: questionId }, { _id: questionId }],
-    }).lean();
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(questionId) && questionId.length === 24;
+    const question = await PracticeQuestion.findOne(
+      isValidObjectId
+        ? { $or: [{ id: questionId }, { _id: questionId }] }
+        : { id: questionId }
+    ).lean();
 
     // If question has custom testCases, filter for visible ones only
     const allTestCases = question?.testCases || [];

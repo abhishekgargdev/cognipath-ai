@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
@@ -17,9 +18,10 @@ export async function POST(
     await connectToDatabase();
 
     // 1. Find recommendation document
-    const rec = await AiRecommendation.findOne({
-      $or: [{ id }, { _id: id }],
-    });
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id) && id.length === 24;
+    const rec = await AiRecommendation.findOne(
+      isValidObjectId ? { $or: [{ id }, { _id: id }] } : { id }
+    );
 
     if (!rec) {
       return NextResponse.json({ error: 'Recommendation not found' }, { status: 404 });

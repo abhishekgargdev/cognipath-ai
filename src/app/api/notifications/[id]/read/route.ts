@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
@@ -14,8 +15,11 @@ export async function PATCH(
 
     await connectToDatabase();
 
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id) && id.length === 24;
+    const notifQuery = isValidObjectId ? { $or: [{ id }, { _id: id }], userId } : { id, userId };
+
     const notif = await Notification.findOneAndUpdate(
-      { $or: [{ id }, { _id: id }], userId },
+      notifQuery,
       { $set: { read: true } },
       { returnDocument: 'after' }
     ).lean();
