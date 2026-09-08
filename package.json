@@ -6,7 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "tsx scripts/seed.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "verify": "tsx scripts/verify.ts",
+    "generate-icons": "tsx scripts/generate-icons.ts",
+    "test:analytics": "tsx scripts/test-analytics-flow.ts",
+    "test:cron": "tsx scripts/test-cron-job.ts",
+    "test:modules": "tsx scripts/test-final-modules-flow.ts",
+    "test:qa-pwa": "tsx scripts/test-final-qa-pwa.ts",
+    "test:practice": "tsx scripts/test-practice-flow.ts",
+    "test:recommendations": "tsx scripts/test-recommendations-flow.ts"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.11.3",
