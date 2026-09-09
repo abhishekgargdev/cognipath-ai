@@ -15,6 +15,7 @@ export interface IUserProfile extends Document {
   totalQuestionsTargetToday: number;
   currentTopicId: string;
   theme: 'light' | 'dark' | 'system';
+  onboardingStatus: 'pending' | 'processing' | 'completed';
   onboardingCompletedAt?: Date | null;
   lastActiveAt: Date;
   createdAt: Date;
@@ -43,8 +44,14 @@ const UserProfileSchema: Schema<IUserProfile> = new Schema(
     overallMastery: { type: Number, required: true, default: 0, min: 0, max: 100 },
     completedQuestionsToday: { type: Number, required: true, default: 0, min: 0 },
     totalQuestionsTargetToday: { type: Number, required: true, default: 5, min: 1 },
-    currentTopicId: { type: String, default: 'js-event-loop' },
+    currentTopicId: { type: String, default: '' },
     theme: { type: String, enum: ['light', 'dark', 'system'], default: 'light' },
+    onboardingStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'completed'],
+      default: 'pending',
+      index: true,
+    },
     onboardingCompletedAt: { type: Date, default: null, index: true },
     lastActiveAt: { type: Date, default: Date.now },
   },

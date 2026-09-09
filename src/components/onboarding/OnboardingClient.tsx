@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
   ArrowLeft,
@@ -70,7 +70,10 @@ const PREFERENCE_OPTIONS = [
 
 export function OnboardingClient() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const searchParams = useSearchParams();
+  const isProcessingMode = searchParams.get('status') === 'processing';
+
+  const [currentStep, setCurrentStep] = useState<number>(isProcessingMode ? 6 : 1);
   const totalSteps = 6;
 
   // Form State
@@ -91,28 +94,35 @@ export function OnboardingClient() {
 
   // Submission & Generation State
   const [generationStep, setGenerationStep] = useState<number>(0);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(isProcessingMode);
+  const [isPolling, setIsPolling] = useState<boolean>(isProcessingMode);
+  const [progressPercent, setProgressPercent] = useState<number>(15);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const generationLog = [
     'Analyzing target role: ' + (customGoal || selectedGoal) + '...',
-    'Mapping selected skills and calculating prerequisite DAG...',
-    'Invoking CogniPath AI Abstraction Layer for roadmap synthesis...',
-    'Benchmarking current experience level & strengths...',
+    'Storing bulk skill job in Upstash Redis queue...',
+    'Executing non-blocking background skill node synthesis...',
+    'Benchmarking current experience level & prerequisite DAG...',
     'Sequencing modular learning nodes & milestones...',
     'Persisting user syllabus profile & node progress to MongoDB...',
     'Personalized AI learning roadmap successfully generated!',
   ];
 
+  // If page loaded with ?status=processing, open directly to Step 6 and start status polling
   useEffect(() => {
-    if (currentStep === 6 && !isSubmitting) {
+    if (isProcessingMode) {
+      setCurrentStep(6);
+      setIsSubmitting(true);
+      setIsPolling(true);
+    }
+  }, [isProcessingMode]);
+
+  // Submit handler on step 6
+  useEffect(() => {
+    if (currentStep === 6 && !isSubmitting && !isProcessingMode) {
       setIsSubmitting(true);
       setSubmitError(null);
-
-      // Animate progress log while triggering API submit
-      const interval = setInterval(() => {
-        setGenerationStep((prev) => (prev < generationLog.length - 2 ? prev + 1 : prev));
-      }, 800);
 
       const submitOnboarding = async () => {
         try {
@@ -130,33 +140,62 @@ export function OnboardingClient() {
             }),
           });
 
-          clearInterval(interval);
-
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || 'Failed to complete onboarding');
+            throw new Error(errData.error || 'Failed to submit onboarding options');
           }
 
-          setGenerationStep(generationLog.length - 1);
-          toast.success('Curricular blueprint successfully synthesized!');
-
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1200);
+          // Non-blocking submission succeeded, start live status polling
+          setIsPolling(true);
+          setGenerationStep(1);
         } catch (err: any) {
-          clearInterval(interval);
           setIsSubmitting(false);
-          const errorMsg = err.message || 'An error occurred during roadmap generation.';
+          const errorMsg = err.message || 'An error occurred during onboarding submission.';
           setSubmitError(errorMsg);
           toast.error(errorMsg);
         }
       };
 
       submitOnboarding();
-
-      return () => clearInterval(interval);
     }
-  }, [currentStep, isSubmitting, customGoal, selectedGoal, overallExperience, selectedSkills, selectedReason, dailyMinutes, preferences, generationLog.length, router]);
+  }, [currentStep, isSubmitting, isProcessingMode, customGoal, selectedGoal, overallExperience, selectedSkills, selectedReason, dailyMinutes, preferences]);
+
+  // Live status polling useEffect
+  useEffect(() => {
+    if (!isPolling) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/onboarding/status');
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.progressPercent) {
+          setProgressPercent(data.progressPercent);
+          const calculatedStep = Math.min(
+            generationLog.length - 2,
+            Math.floor((data.progressPercent / 100) * (generationLog.length - 1))
+          );
+          setGenerationStep(Math.max(1, calculatedStep));
+        }
+
+        if (data.isCompleted || data.onboardingStatus === 'completed') {
+          setIsPolling(false);
+          setGenerationStep(generationLog.length - 1);
+          setProgressPercent(100);
+          toast.success('Curricular blueprint successfully synthesized!');
+
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 1200);
+        }
+      } catch (err) {
+        console.warn('Status polling error:', err);
+      }
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isPolling, generationLog.length, router]);
 
   const toggleSkill = (skillId: string, skillName: string) => {
     if (selectedSkills.some((s) => s.skillId === skillId)) {
@@ -642,10 +681,24 @@ export function OnboardingClient() {
             )}
 
             {!submitError && (
-              <div className="p-4 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] text-left font-mono text-xs space-y-2 shadow-xs">
-                {generationLog.map((log, index) => {
-                  if (index > generationStep) return null;
-                  const isCurrent = index === generationStep;
+              <div className="p-4 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] text-left font-mono text-xs space-y-3 shadow-xs">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#5C5852] dark:text-[#9E9A91]">
+                    <span>Synthesis Progress</span>
+                    <span className="text-[#8B2635] dark:text-[#E08A95]">{progressPercent}%</span>
+                  </div>
+                  <div className="w-full bg-[#EAE7DF] dark:bg-[#252420] h-1.5 rounded-none overflow-hidden">
+                    <div
+                      className="bg-[#8B2635] dark:bg-[#E08A95] h-full transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1 border-t border-[#DCD9D1]/50 dark:border-[#2C2A26]/50">
+                  {generationLog.map((log, index) => {
+                    if (index > generationStep) return null;
+                    const isCurrent = index === generationStep;
                   return (
                     <div
                       key={log}
@@ -664,6 +717,7 @@ export function OnboardingClient() {
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
           </div>

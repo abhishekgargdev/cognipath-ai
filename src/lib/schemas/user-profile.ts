@@ -13,8 +13,9 @@ export const userProfileSchema = z.object({
   overallMastery: z.number().min(0).max(100).default(0),
   completedQuestionsToday: z.number().min(0).default(0),
   totalQuestionsTargetToday: z.number().min(1).default(5),
-  currentTopicId: z.string().default('js-event-loop'),
+  currentTopicId: z.string().default(''),
   theme: z.enum(['light', 'dark', 'system']).default('light'),
+  onboardingStatus: z.enum(['pending', 'processing', 'completed']).default('pending'),
 });
 
 export type UserProfileInput = z.infer<typeof userProfileSchema>;

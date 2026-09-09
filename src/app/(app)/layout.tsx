@@ -31,15 +31,18 @@ export default async function AppLayout({
   const fullUrl = headerList.get('x-url') || '';
   const isEditMode = fullUrl.includes('mode=edit');
 
-  const isCompleted = Boolean(profile?.onboardingCompletedAt);
+  const isCompleted = profile?.onboardingStatus === 'completed' || Boolean(profile?.onboardingCompletedAt);
+  const isProcessing = profile?.onboardingStatus === 'processing';
+  const isSettingsPage = pathname.startsWith('/settings');
+  const isOnboardingPage = pathname.startsWith('/onboarding');
 
-  // 1. New / Incomplete user on any route except /onboarding -> redirect to /onboarding
-  if (!isCompleted && !pathname.startsWith('/onboarding')) {
-    redirect('/onboarding');
+  // 1. If onboarding is incomplete or processing, restrict user to /onboarding and /settings only
+  if (!isCompleted && !isOnboardingPage && !isSettingsPage) {
+    redirect('/onboarding?status=processing');
   }
 
-  // 2. Completed user on /onboarding without ?mode=edit -> redirect to /dashboard
-  if (isCompleted && pathname.startsWith('/onboarding') && !isEditMode) {
+  // 2. Completed user on /onboarding without ?mode=edit or ?status=processing -> redirect to /dashboard
+  if (isCompleted && isOnboardingPage && !isEditMode && !fullUrl.includes('status=processing')) {
     redirect('/dashboard');
   }
 
