@@ -4,22 +4,42 @@ import { connectToDatabase } from '@/lib/db/mongoose';
 import { UserProfile } from '@/lib/db/models/UserProfile';
 import { PracticeSubmission } from '@/lib/db/models/PracticeSubmission';
 import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
+import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
 
 export async function GET(req: Request) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || 'demo-user-id';
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = session.user.id;
 
     await connectToDatabase();
 
     // 1. Fetch user profile
     const profile = await UserProfile.findOne({ userId }).lean();
-    const targetGoal = profile?.targetGoal || 'Full Stack Architect';
-    const streakDays = profile?.streakDays || 1;
-    const xp = profile?.xp || 150;
-    const overallMastery = profile?.overallMastery || 68;
+    const targetGoal = profile?.targetGoal || 'Full Stack Developer';
+    const streakDays = profile?.streakDays ?? 0;
+    const xp = profile?.xp ?? 0;
 
-    // 2. Aggregate PracticeSubmission stats (Harness Accuracy)
+    // 2. Fetch User Progress Rows & Nodes
+    const allNodes = await RoadmapNode.find().sort({ sequenceOrder: 1 }).lean();
+    const userProgressDocs = await UserNodeProgress.find({ userId }).lean();
+    const progressMap = new Map(userProgressDocs.map((p) => [p.nodeId, p]));
+
+    // 3. Aggregate Overall Mastery
+    const totalNodesCount = allNodes.length;
+    const aggregateMastery =
+      totalNodesCount > 0
+        ? Math.round(
+            allNodes.reduce(
+              (acc, n) => acc + (progressMap.get(n.id)?.masteryPercent ?? 0),
+              0
+            ) / totalNodesCount
+          )
+        : 0;
+
+    // 4. Aggregate PracticeSubmission stats (Harness Accuracy)
     const submissionStats = await PracticeSubmission.aggregate([
       { $match: { userId } },
       {
@@ -34,9 +54,9 @@ export async function GET(req: Request) {
 
     const totalSubs = submissionStats[0]?.totalSubmissions || 0;
     const passedSubs = submissionStats[0]?.passedSubmissions || 0;
-    const harnessAccuracy = totalSubs > 0 ? Math.round((passedSubs / totalSubs) * 100) : 86;
+    const harnessAccuracy = totalSubs > 0 ? Math.round((passedSubs / totalSubs) * 100) : 0;
 
-    // 3. Aggregate 30-Day Activity Heatmap
+    // 5. Aggregate 30-Day Activity Heatmap
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
@@ -66,41 +86,71 @@ export async function GET(req: Request) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const count = activityMap.get(dateStr) || (i < 5 ? 1 : i === 8 ? 0 : i < 18 ? 2 : 3);
+      const count = activityMap.get(dateStr) || 0;
       const level = count === 0 ? 0 : count <= 2 ? 1 : count <= 4 ? 2 : 3;
       days.push({ day: 30 - i, date: dateStr, count, level });
     }
 
-    // 4. Aggregate UserNodeProgress for skills breakdown & concept drilldown
-    const progressAgg = await UserNodeProgress.aggregate([
-      { $match: { userId } },
-      {
-        $group: {
-          _id: '$status',
-          avgMastery: { $avg: '$masteryPercent' },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    // 6. Aggregate Domain Distribution Index (Skills Breakdown)
+    const categoryMap = new Map<
+      string,
+      { total: number; completed: number; totalMastery: number }
+    >();
 
-    const skillsBreakdown = [
-      { name: 'JavaScript', percent: 88, mastered: '8/9 concepts' },
-      { name: 'React & Next.js', percent: 72, mastered: '6/8 concepts' },
-      { name: 'Data Structures & Algorithms', percent: 69, mastered: '11/16 concepts' },
-      { name: 'Node.js & Express', percent: 61, mastered: '4/7 concepts' },
-      { name: 'MongoDB & Databases', percent: 54, mastered: '3/6 concepts' },
-    ];
+    for (const node of allNodes) {
+      const catLabel = node.categoryLabel || node.category || 'General Track';
+      const prog = progressMap.get(node.id);
+      const mastery = prog?.masteryPercent ?? 0;
+      const isCompleted = prog?.status === 'completed';
 
-    const conceptDrilldown = [
-      { name: 'Variables & Scope', percent: 96, status: 'Mastered', isWeak: false },
-      { name: 'Functions & First-Class Citizency', percent: 91, status: 'Mastered', isWeak: false },
-      { name: 'Closures & Lexical Environments', percent: 78, status: 'Solid', isWeak: false },
-      { name: 'Promises & Chained Error Bubbling', percent: 63, status: 'Weak', isWeak: true },
-      { name: 'Async/Await & Microtask Priority', percent: 58, status: 'Weak', isWeak: true },
-    ];
+      const catData = categoryMap.get(catLabel) || {
+        total: 0,
+        completed: 0,
+        totalMastery: 0,
+      };
+      catData.total += 1;
+      if (isCompleted) catData.completed += 1;
+      catData.totalMastery += mastery;
+      categoryMap.set(catLabel, catData);
+    }
+
+    const skillsBreakdown = Array.from(categoryMap.entries()).map(([name, cat]) => {
+      const avgPercent = cat.total > 0 ? Math.round(cat.totalMastery / cat.total) : 0;
+      return {
+        name,
+        percent: avgPercent,
+        mastered: `${cat.completed}/${cat.total} nodes`,
+      };
+    });
+
+    // 7. Aggregate Deep Concept Dissection (Concept Drilldown)
+    const conceptDrilldown = allNodes.slice(0, 8).map((node) => {
+      const prog = progressMap.get(node.id);
+      const percent = prog?.masteryPercent ?? 0;
+      const status =
+        prog?.status === 'completed'
+          ? 'Mastered'
+          : prog?.status === 'in_progress'
+          ? 'Solid'
+          : prog?.status === 'review_needed'
+          ? 'Weak'
+          : prog?.status === 'available'
+          ? 'Available'
+          : 'Locked';
+
+      const isWeak =
+        prog?.status === 'review_needed' || (percent > 0 && percent < 50);
+
+      return {
+        name: node.title,
+        percent,
+        status,
+        isWeak,
+      };
+    });
 
     return NextResponse.json({
-      aggregateMastery: overallMastery,
+      aggregateMastery,
       harnessAccuracy,
       unbrokenCadence: streakDays,
       accreditedXp: xp,

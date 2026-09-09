@@ -76,7 +76,8 @@ export function RoadmapClient({ user, milestones: initialMilestones }: RoadmapCl
   const allNodes = useMemo(() => milestones.flatMap((ms) => ms.nodes), [milestones]);
   const totalTopics = allNodes.length;
   const masteredCount = allNodes.filter((n) => n.status === 'completed').length;
-  const masteryPercentage = totalTopics > 0 ? Math.round((masteredCount / totalTopics) * 100) : 0;
+  const totalMasterySum = allNodes.reduce((acc, n) => acc + (n.masteryPercent || 0), 0);
+  const masteryPercentage = totalTopics > 0 ? Math.round(totalMasterySum / totalTopics) : 0;
 
   // Filtered milestones
   const filteredMilestones = useMemo(() => {

@@ -47,6 +47,7 @@ export default async function RoadmapPage() {
 
     const nodes: ClientRoadmapNode[] = milestoneNodesDocs.map((n) => {
       const userProg = progressMap.get(n.id);
+      const userCompletedSubtopics = new Set(userProg?.completedSubtopics || []);
       return {
         id: n.id,
         milestoneId: n.milestoneId,
@@ -66,7 +67,7 @@ export default async function RoadmapPage() {
           id: st.id,
           title: st.title,
           sequenceOrder: st.sequenceOrder,
-          completed: Boolean(st.completed),
+          completed: userCompletedSubtopics.has(st.id),
         })),
       };
     });

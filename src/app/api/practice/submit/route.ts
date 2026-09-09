@@ -187,7 +187,7 @@ export async function POST(req: Request) {
       { upsert: true }
     );
 
-    // 6. Update UserNodeProgress mastery
+    // 6. Update UserNodeProgress mastery & UserProfile overallMastery
     if (question.topicId) {
       const nodeProgress = await UserNodeProgress.findOne({ userId, nodeId: question.topicId });
       if (nodeProgress) {
@@ -197,6 +197,15 @@ export async function POST(req: Request) {
         }
         await nodeProgress.save();
       }
+    }
+
+    const allUserProgress = await UserNodeProgress.find({ userId });
+    if (allUserProgress.length > 0 && profile) {
+      const overallMastery = Math.round(
+        allUserProgress.reduce((acc, p) => acc + (p.masteryPercent || 0), 0) / allUserProgress.length
+      );
+      profile.overallMastery = overallMastery;
+      await profile.save();
     }
 
     // 7. Format full Evaluation Result for UI Modal
