@@ -32,7 +32,7 @@ migrated, delete it from `ui_pages/` in the same task.
 - **AI**: Gemini (6 rotating keys) with NVIDIA as fallback, always called
   through `src/lib/ai/*`, never directly from a route or component
 - **Cache / rate limiting / locks**: Upstash Redis
-- **Code execution**: Judge0-compatible sandbox via `src/lib/code-runner/*`
+- **Code execution**: JDoodle sandbox via `src/lib/code-runner/*`
 - **Scheduling**: Vercel Cron
 - **Editor**: Monaco (`@monaco-editor/react`)
 - **Icons**: lucide-react. **Charts**: recharts.
@@ -44,7 +44,7 @@ new AI provider without flagging it first instead of just installing it.
 
 ## 3. Non-negotiable architectural rules
 
-1. **Browser never talks to Gemini/NVIDIA/Judge0/Mongo directly.** Every
+1. **Browser never talks to Gemini/NVIDIA/JDoodle/Mongo directly.** Every
    external call goes: Client → Next.js route handler / server action →
    internal `lib/` service → provider. API keys are read only in
    server-only files (no `NEXT_PUBLIC_` prefix on any secret, ever).
@@ -54,7 +54,7 @@ new AI provider without flagging it first instead of just installing it.
    the error appended to the prompt, then fail loudly (don't silently show
    broken content).
 3. **Code correctness is decided by the sandbox, not the LLM.** For coding
-   questions, Judge0 test results are the ground truth for `isCorrect`/
+   questions, JDoodle test results are the ground truth for `isCorrect`/
    `passed`. The AI's job is to *explain* the result (concepts, complexity,
    alternatives), never to *decide* it.
 4. **Don't regenerate what's already been generated.** Lessons and practice

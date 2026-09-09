@@ -1,5 +1,5 @@
 import { validateCodeGuardrails } from './guardrails';
-import { runJudge0Submission } from './providers/judge0';
+import { runJDoodleSubmission } from './providers/jdoodle';
 import { runFallbackExecution } from './providers/fallback';
 
 export interface TestCaseInput {
@@ -37,7 +37,7 @@ export interface CodeRunnerExecutionResponse {
   stderr: string;
   passedTests: number;
   totalTests: number;
-  providerUsed: 'judge0' | 'fallback';
+  providerUsed: 'jdoodle' | 'fallback';
 }
 
 function normalizeOutput(output: string): string {
@@ -65,15 +65,22 @@ export async function execute(options: CodeRunnerOptions): Promise<CodeRunnerExe
     };
   }
 
-  const isJudge0Configured = Boolean((process.env.JUDGE0_API_URL || '').trim());
-  let providerUsed: 'judge0' | 'fallback' = isJudge0Configured ? 'judge0' : 'fallback';
+  const clientId = (process.env.JDOODLE_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.JDOODLE_CLIENT_SECRET || '').trim();
+  const isJDoodleConfigured = Boolean(
+    clientId &&
+      clientSecret &&
+      clientId !== 'your_client_id' &&
+      clientSecret !== 'your_client_secret'
+  );
+
+  let providerUsed: 'jdoodle' | 'fallback' = isJDoodleConfigured ? 'jdoodle' : 'fallback';
 
   const testResults: TestCaseResult[] = [];
   let totalRuntimeMs = 0;
   let aggregatedStdout = '';
   let aggregatedStderr = '';
 
-  // If no specific test cases provided, run single execution
   const casesToRun: TestCaseInput[] =
     testCases.length > 0
       ? testCases
@@ -86,30 +93,29 @@ export async function execute(options: CodeRunnerOptions): Promise<CodeRunnerExe
     let tcError: string | undefined = undefined;
     let tcRuntimeMs = 0;
 
-    if (providerUsed === 'judge0') {
+    if (providerUsed === 'jdoodle') {
       try {
-        const j0Result = await runJudge0Submission({
+        const jdResult = await runJDoodleSubmission({
           language,
           sourceCode: code,
           stdin: tc.input,
-          expectedOutput: tc.expectedOutput || undefined,
-          cpuTimeLimitSeconds: 5,
         });
 
-        actualOutput = normalizeOutput(j0Result.stdout);
-        actualStderr = normalizeOutput(j0Result.stderr || j0Result.compileOutput);
-        tcRuntimeMs = j0Result.timeMs;
+        actualOutput = normalizeOutput(jdResult.stdout);
+        actualStderr = normalizeOutput(jdResult.stderr);
+        tcRuntimeMs = jdResult.timeMs;
 
-        if (j0Result.statusId === 3) {
+        if (jdResult.statusCode === 200) {
           isTestCasePassed = true;
-        } else if (j0Result.statusId === 4) {
-          isTestCasePassed = false;
         } else {
           isTestCasePassed = false;
-          tcError = j0Result.statusDescription;
+          tcError = jdResult.error || `JDoodle execution error (status: ${jdResult.statusCode})`;
         }
-      } catch (j0Err: any) {
-        console.warn('[Code Runner] Judge0 API call failed, falling back to local isolated runner:', j0Err.message || j0Err);
+      } catch (jdErr: any) {
+        console.warn(
+          '[Code Runner] JDoodle API call failed, falling back to local runner:',
+          jdErr.message || jdErr
+        );
         providerUsed = 'fallback';
       }
     }
@@ -179,5 +185,5 @@ export async function execute(options: CodeRunnerOptions): Promise<CodeRunnerExe
 }
 
 export * from './guardrails';
-export * from './providers/judge0';
+export * from './providers/jdoodle';
 export * from './providers/fallback';
