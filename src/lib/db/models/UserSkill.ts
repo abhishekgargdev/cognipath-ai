@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IUserSkill extends Document {
   userId: string;
   skillId: string;
+  name?: string;
   level: 'Complete Beginner' | 'Beginner' | 'Intermediate' | 'Advanced';
   updatedAt: Date;
 }
@@ -11,6 +12,7 @@ const UserSkillSchema = new Schema<IUserSkill>(
   {
     userId: { type: String, required: true, index: true },
     skillId: { type: String, required: true, index: true },
+    name: { type: String },
     level: {
       type: String,
       required: true,

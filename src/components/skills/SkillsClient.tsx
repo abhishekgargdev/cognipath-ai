@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   TrendingUp,
@@ -9,9 +10,12 @@ import {
   Plus,
   X,
   Tag,
+  BookMarked,
+  Sparkles,
 } from 'lucide-react';
 import { Pagination } from '@/components/common/Pagination';
-import { LoadingSpinner, SkillsSkeleton } from '@/components/common';
+import { SkillsSkeleton } from '@/components/common';
+import { toast } from 'sonner';
 
 export interface SkillItem {
   id: string;
@@ -27,10 +31,13 @@ export interface SkillItem {
 }
 
 export function SkillsClient() {
+  const router = useRouter();
   const [skillsCatalog, setSkillsCatalog] = useState<SkillItem[]>([]);
-  const [userSelectedSkills, setUserSelectedSkills] = useState<Array<{ skillId: string; name: string }>>([]);
+  const [userSelectedSkills, setUserSelectedSkills] = useState<Array<{ skillId: string; name: string; level?: string }>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
+  const [activeTab, setActiveTab] = useState<'catalog' | 'enrolled'>('catalog');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [commaInput, setCommaInput] = useState('');
@@ -50,6 +57,9 @@ export function SkillsClient() {
         if (res.ok) {
           const data = await res.json();
           setSkillsCatalog(data.skills || []);
+          if (data.userSkills && Array.isArray(data.userSkills)) {
+            setUserSelectedSkills(data.userSkills);
+          }
         }
       } catch (err) {
         console.error('Failed to load skills catalog:', err);
@@ -70,45 +80,49 @@ export function SkillsClient() {
     setCurrentPage(1);
   };
 
-  const filteredSkills = useMemo(() => {
-    return skillsCatalog.filter((skill) => {
-      const matchesCategory = selectedCategory === 'All' || skill.category === selectedCategory;
-      const matchesSearch =
-        skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        skill.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        skill.careerRelevance.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [skillsCatalog, selectedCategory, searchQuery]);
+  const isSkillSelected = (skillId: string, skillName: string) => {
+    return userSelectedSkills.some(
+      (s) => s.skillId === skillId || s.name.toLowerCase() === skillName.toLowerCase()
+    );
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filteredSkills.length / pageSize));
-  const paginatedSkills = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredSkills.slice(start, start + pageSize);
-  }, [filteredSkills, currentPage, pageSize]);
+  const syncUserSkills = async (nextSkills: Array<{ skillId: string; name: string; level?: string }>) => {
+    try {
+      setIsSyncing(true);
+      const res = await fetch('/api/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedSkills: nextSkills }),
+      });
 
-  const isSkillSelected = (skillId: string) => {
-    return userSelectedSkills.some((s) => s.skillId === skillId);
+      if (res.ok) {
+        toast.success('Skills roster updated! Curriculum roadmap recalculated.');
+        router.refresh();
+      } else {
+        toast.error('Failed to sync skill roster.');
+      }
+    } catch (err) {
+      console.error('Failed to sync skills:', err);
+      toast.error('Error updating skills roster.');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const toggleSkill = async (skillId: string, skillName: string) => {
     let nextSkills = [...userSelectedSkills];
-    if (isSkillSelected(skillId)) {
-      nextSkills = nextSkills.filter((s) => s.skillId !== skillId);
-    } else {
-      nextSkills.push({ skillId, name: skillName });
-    }
-    setUserSelectedSkills(nextSkills);
+    const exists = isSkillSelected(skillId, skillName);
 
-    try {
-      await fetch('/api/users/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedSkills: nextSkills }),
-      });
-    } catch (err) {
-      console.error('Failed to sync skills:', err);
+    if (exists) {
+      nextSkills = nextSkills.filter(
+        (s) => s.skillId !== skillId && s.name.toLowerCase() !== skillName.toLowerCase()
+      );
+    } else {
+      nextSkills.push({ skillId, name: skillName, level: 'Beginner' });
     }
+
+    setUserSelectedSkills(nextSkills);
+    await syncUserSkills(nextSkills);
   };
 
   const parsedCandidateSkills = commaInput
@@ -133,7 +147,7 @@ export function SkillsClient() {
       if (!exists) {
         const catalogMatch = skillsCatalog.find((cs) => cs.name.toLowerCase() === rawName.toLowerCase());
         const skillId = catalogMatch ? catalogMatch.id : `custom-${rawName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
-        currentSkills.push({ skillId, name: catalogMatch ? catalogMatch.name : rawName });
+        currentSkills.push({ skillId, name: catalogMatch ? catalogMatch.name : rawName, level: 'Beginner' });
         addedCount++;
         addedNames.push(catalogMatch ? catalogMatch.name : rawName);
       }
@@ -143,23 +157,67 @@ export function SkillsClient() {
     setCommaInput('');
 
     if (addedCount > 0) {
-      setBatchSuccessMessage(`Successfully accredited ${addedCount} competencies: ${addedNames.join(', ')}`);
+      setBatchSuccessMessage(`Successfully enrolled ${addedCount} skills: ${addedNames.join(', ')}`);
       setTimeout(() => setBatchSuccessMessage(null), 4000);
-
-      try {
-        await fetch('/api/users/me', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ selectedSkills: currentSkills }),
-        });
-      } catch (err) {
-        console.error('Failed to sync batch skills:', err);
-      }
+      await syncUserSkills(currentSkills);
     } else {
-      setBatchSuccessMessage('All entered competencies are already present in your syllabus.');
+      setBatchSuccessMessage('All entered skills are already present in your active syllabus roster.');
       setTimeout(() => setBatchSuccessMessage(null), 3000);
     }
   };
+
+  const filteredSkills = useMemo(() => {
+    if (activeTab === 'enrolled') {
+      const enrolledNames = new Set(userSelectedSkills.map((s) => s.name.toLowerCase()));
+      const enrolledIds = new Set(userSelectedSkills.map((s) => s.skillId));
+
+      let list = skillsCatalog.filter(
+        (s) => enrolledIds.has(s.id) || enrolledNames.has(s.name.toLowerCase())
+      );
+
+      // Include user custom skills not in catalog
+      const catalogNames = new Set(skillsCatalog.map((s) => s.name.toLowerCase()));
+      userSelectedSkills.forEach((us) => {
+        if (!catalogNames.has(us.name.toLowerCase())) {
+          list.push({
+            id: us.skillId,
+            name: us.name,
+            category: 'User Custom Skill',
+            difficulty: (us.level as any) || 'Beginner',
+            prerequisites: [],
+            relatedSkills: [],
+            estHours: 10,
+            careerRelevance: 'Custom skill enrolled during profile setup or batch addition.',
+            description: `Personalized skill module for ${us.name}.`,
+            trending: false,
+          });
+        }
+      });
+
+      return list.filter((skill) => {
+        const matchesCategory = selectedCategory === 'All' || skill.category === selectedCategory;
+        const matchesSearch =
+          skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          skill.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
+    }
+
+    return skillsCatalog.filter((skill) => {
+      const matchesCategory = selectedCategory === 'All' || skill.category === selectedCategory;
+      const matchesSearch =
+        skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        skill.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        skill.careerRelevance.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [skillsCatalog, userSelectedSkills, activeTab, selectedCategory, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSkills.length / pageSize));
+  const paginatedSkills = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredSkills.slice(start, start + pageSize);
+  }, [filteredSkills, currentPage, pageSize]);
 
   if (isLoading) {
     return <SkillsSkeleton />;
@@ -170,13 +228,13 @@ export function SkillsClient() {
       {/* Header */}
       <div>
         <span className="text-[#8B2635] dark:text-[#E08A95] font-mono text-[10px] uppercase font-bold tracking-[0.2em]">
-          Encyclopedic Competency Directory
+          Technical Competency Canon
         </span>
         <h1 className="text-2xl sm:text-3xl font-serif font-black text-[#121212] dark:text-[#F4F2EC] tracking-tight mt-1">
-          Technical Canon & Competency Taxonomy
+          Skills Directory & Roster
         </h1>
         <p className="text-xs sm:text-sm font-serif italic text-[#5C5852] dark:text-[#A6A299] mt-1">
-          Catalog of engineering disciplines, foundational prerequisites, and industrial relevance indices for syllabus customisation.
+          View your enrolled learning skills or explore engineering disciplines for syllabus customization.
         </p>
       </div>
 
@@ -189,11 +247,11 @@ export function SkillsClient() {
               <span>Batch Add Skills (Comma-Separated)</span>
             </h2>
             <p className="text-xs font-serif italic text-[#5C5852] dark:text-[#9E9A91] mt-0.5">
-              Paste or type multiple engineering disciplines separated by commas to immediately append to your active syllabus.
+              Type or paste skills separated by commas to add them directly to your active roadmap.
             </p>
           </div>
-          <span className="text-[10px] font-mono uppercase tracking-wider font-bold px-2 py-0.5 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#F4F1EA] dark:bg-[#201F1B] text-[#5C5852] dark:text-[#9E9A91] self-start sm:self-auto">
-            {userSelectedSkills.length} Enrolled
+          <span className="text-[10px] font-mono uppercase tracking-wider font-bold px-2.5 py-1 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#F4F1EA] dark:bg-[#201F1B] text-[#5C5852] dark:text-[#9E9A91] self-start sm:self-auto">
+            {userSelectedSkills.length} Skills Enrolled
           </span>
         </div>
 
@@ -219,12 +277,14 @@ export function SkillsClient() {
             <button
               id="batch-enroll-btn"
               onClick={() => handleAddCommaSkills()}
-              disabled={parsedCandidateSkills.length === 0}
+              disabled={parsedCandidateSkills.length === 0 || isSyncing}
               className="px-5 py-2.5 rounded-xs bg-[#121212] dark:bg-[#F4F2EC] hover:bg-[#2C2A26] dark:hover:bg-[#FFFFFF] text-[#FFFFFF] dark:text-[#121212] font-serif font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors border border-[#121212] dark:border-[#F4F2EC] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>
-                {parsedCandidateSkills.length > 0
+                {isSyncing
+                  ? 'Recalculating...'
+                  : parsedCandidateSkills.length > 0
                   ? `Enroll (${parsedCandidateSkills.length}) ${parsedCandidateSkills.length === 1 ? 'Skill' : 'Skills'}`
                   : 'Enroll Skills'}
               </span>
@@ -276,7 +336,7 @@ export function SkillsClient() {
           {userSelectedSkills.length > 0 && (
             <div className="pt-3 border-t border-[#DCD9D1] dark:border-[#2C2A26] space-y-2">
               <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#5C5852] dark:text-[#9E9A91] font-bold block">
-                Current Syllabus Roster:
+                Your Enrolled Roster:
               </span>
               <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
                 {userSelectedSkills.map((s) => (
@@ -301,6 +361,39 @@ export function SkillsClient() {
         </div>
       </div>
 
+      {/* Main View Tabs: Enrolled vs Catalog */}
+      <div className="flex items-center gap-2 border-b border-[#DCD9D1] dark:border-[#2C2A26] pb-2">
+        <button
+          onClick={() => {
+            setActiveTab('enrolled');
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 rounded-xs text-xs font-serif font-bold flex items-center gap-2 cursor-pointer transition-all ${
+            activeTab === 'enrolled'
+              ? 'bg-[#121212] text-white dark:bg-[#F4F2EC] dark:text-[#121212] border border-[#121212] dark:border-[#F4F2EC]'
+              : 'bg-[#FFFFFF] dark:bg-[#181714] text-[#5C5852] dark:text-[#9E9A91] border border-[#DCD9D1] dark:border-[#2C2A26] hover:bg-[#F4F1EA] dark:hover:bg-[#201F1B]'
+          }`}
+        >
+          <BookMarked className="w-3.5 h-3.5" />
+          <span>My Enrolled Skills ({userSelectedSkills.length})</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('catalog');
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 rounded-xs text-xs font-serif font-bold flex items-center gap-2 cursor-pointer transition-all ${
+            activeTab === 'catalog'
+              ? 'bg-[#121212] text-white dark:bg-[#F4F2EC] dark:text-[#121212] border border-[#121212] dark:border-[#F4F2EC]'
+              : 'bg-[#FFFFFF] dark:bg-[#181714] text-[#5C5852] dark:text-[#9E9A91] border border-[#DCD9D1] dark:border-[#2C2A26] hover:bg-[#F4F1EA] dark:hover:bg-[#201F1B]'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Browse All Catalog ({skillsCatalog.length})</span>
+        </button>
+      </div>
+
       {/* Search & Category Filter Bar */}
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         <div className="relative flex-1 max-w-md">
@@ -308,7 +401,7 @@ export function SkillsClient() {
           <input
             id="skills-search-input"
             type="text"
-            placeholder="Search disciplines, sub-systems, paradigms..."
+            placeholder="Search enrolled skills or catalog..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-9 pr-4 py-2 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] text-xs font-serif text-[#121212] dark:text-[#F4F2EC] placeholder-[#9E9A91] focus:outline-none focus:border-[#121212] dark:focus:border-[#F4F2EC]"
@@ -337,7 +430,7 @@ export function SkillsClient() {
       {paginatedSkills.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {paginatedSkills.map((skill) => {
-            const selected = isSkillSelected(skill.id);
+            const selected = isSkillSelected(skill.id, skill.name);
             return (
               <div
                 key={skill.id}
@@ -393,11 +486,12 @@ export function SkillsClient() {
 
                 <div className="pt-3 mt-4 border-t border-[#DCD9D1] dark:border-[#2C2A26] flex items-center justify-between">
                   <span className="text-xs font-serif italic text-[#5C5852] dark:text-[#9E9A91]">
-                    {selected ? 'Incorporated into learning profile' : 'Unscheduled competency'}
+                    {selected ? 'Enrolled in active roadmap' : 'Unscheduled skill'}
                   </span>
 
                   <button
                     onClick={() => toggleSkill(skill.id, skill.name)}
+                    disabled={isSyncing}
                     className={`px-3 py-1.5 rounded-xs text-xs font-serif font-bold flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0 ${
                       selected
                         ? 'border-[#1F3A2B]/40 bg-[#1F3A2B]/10 text-[#1F3A2B] dark:text-[#4E876A]'
@@ -407,7 +501,7 @@ export function SkillsClient() {
                     {selected ? (
                       <>
                         <Check className="w-3.5 h-3.5 stroke-3" />
-                        <span>Accredited</span>
+                        <span>Enrolled</span>
                       </>
                     ) : (
                       <>
@@ -424,7 +518,9 @@ export function SkillsClient() {
       ) : (
         <div className="p-8 rounded-xs border border-[#DCD9D1] dark:border-[#2C2A26] bg-[#FFFFFF] dark:bg-[#181714] text-center space-y-3">
           <p className="font-serif italic text-sm text-[#5C5852] dark:text-[#9E9A91]">
-            No competencies found matching your search criteria.
+            {activeTab === 'enrolled'
+              ? 'No enrolled skills found. Use the batch input module or catalog to add skills to your syllabus.'
+              : 'No skills found matching your search criteria.'}
           </p>
         </div>
       )}

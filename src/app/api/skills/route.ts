@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { SkillTaxonomy } from '@/lib/db/models/SkillTaxonomy';
+import { UserSkill } from '@/lib/db/models/UserSkill';
+import { UserProfile } from '@/lib/db/models/UserProfile';
+import { processUserSkillsAndBuildRoadmap } from '@/lib/curriculum/roadmap-builder';
 
 const DEFAULT_SKILLS = [
   {
@@ -64,8 +69,7 @@ const DEFAULT_SKILLS = [
     trending: true,
   },
   {
-    id: 'skill-[#mongodb]',
-    idAlias: 'skill-mongodb',
+    id: 'skill-mongodb',
     name: 'MongoDB & Atlas Document Databases',
     category: 'Databases',
     difficulty: 'Intermediate',
@@ -78,26 +82,89 @@ const DEFAULT_SKILLS = [
   },
 ];
 
+const postSkillsSchema = z.object({
+  selectedSkills: z.array(
+    z.object({
+      skillId: z.string().optional(),
+      name: z.string(),
+      level: z.string().optional(),
+    })
+  ),
+});
+
 export async function GET() {
   try {
+    const session = await auth();
     await connectToDatabase();
 
     let skills = await SkillTaxonomy.find({}).sort({ category: 1, name: 1 }).lean();
 
     if (skills.length === 0) {
       for (const item of DEFAULT_SKILLS) {
-        const itemToSave = { ...item, id: item.idAlias || item.id };
-        delete itemToSave.idAlias;
-        await SkillTaxonomy.findOneAndUpdate({ id: itemToSave.id }, itemToSave, { upsert: true });
+        await SkillTaxonomy.findOneAndUpdate({ id: item.id }, item, { upsert: true });
       }
       skills = await SkillTaxonomy.find({}).sort({ category: 1, name: 1 }).lean();
     }
 
-    return NextResponse.json({ skills });
+    let userSkills: Array<{ skillId: string; name: string; level?: string }> = [];
+
+    if (session?.user?.id) {
+      const userSkillsDocs = await UserSkill.find({ userId: session.user.id }).lean();
+      const taxonomyMap = new Map(skills.map((s) => [s.id, s.name]));
+
+      userSkills = userSkillsDocs.map((s) => ({
+        skillId: s.skillId,
+        name: s.name || taxonomyMap.get(s.skillId) || s.skillId,
+        level: s.level || 'Beginner',
+      }));
+    }
+
+    return NextResponse.json({ skills, userSkills });
   } catch (error: any) {
     console.error('[Skills GET API Error]:', error);
     return NextResponse.json(
       { error: error?.message || 'Failed to fetch skills catalog' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const body = await req.json();
+    const { selectedSkills } = postSkillsSchema.parse(body);
+
+    await connectToDatabase();
+
+    const profile = await UserProfile.findOne({ userId }).lean();
+    const targetGoal = profile?.targetGoal || 'Full Stack Architect';
+    const experienceLevel = profile?.experienceLevel || 'Intermediate';
+    const dailyCommitmentMinutes = profile?.dailyCommitmentMinutes || 30;
+
+    // Process skills, save to UserSkill, and generate skill-laddered roadmap
+    const result = await processUserSkillsAndBuildRoadmap({
+      userId,
+      skills: selectedSkills,
+      targetGoal,
+      experienceLevel,
+      dailyCommitmentMinutes,
+    });
+
+    return NextResponse.json({
+      success: true,
+      enrolledCount: result.enrolledCount,
+      nodeIds: result.nodeIds,
+    });
+  } catch (error: any) {
+    console.error('[Skills POST API Error]:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Failed to sync user skills' },
       { status: 500 }
     );
   }

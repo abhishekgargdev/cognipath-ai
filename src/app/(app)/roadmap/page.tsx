@@ -3,9 +3,11 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { UserProfile } from '@/lib/db/models/UserProfile';
+import { UserSkill } from '@/lib/db/models/UserSkill';
 import { RoadmapMilestone } from '@/lib/db/models/RoadmapMilestone';
 import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
 import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
+import { processUserSkillsAndBuildRoadmap } from '@/lib/curriculum/roadmap-builder';
 import { RoadmapClient, ClientRoadmapMilestone, ClientRoadmapNode } from '@/components/roadmap/RoadmapClient';
 
 export const metadata: Metadata = {
@@ -20,37 +22,71 @@ export default async function RoadmapPage() {
   }
 
   await connectToDatabase();
-
   const userId = session.user.id;
 
-  // 1. Fetch UserProfile
-  const userProfile = await UserProfile.findOne({ userId });
+  // 1. Fetch UserProfile & User Skills
+  let userProfile = await UserProfile.findOne({ userId });
   const targetGoal = userProfile?.targetGoal || 'Full Stack Developer';
+  const experienceLevel = userProfile?.experienceLevel || 'Intermediate';
+  const dailyCommitmentMinutes = userProfile?.dailyCommitmentMinutes || 30;
 
-  // 2. Fetch Milestones & Nodes
-  let milestonesDocs = await RoadmapMilestone.find({ targetGoal }).sort({ sequenceOrder: 1 });
-  if (!milestonesDocs || milestonesDocs.length === 0) {
-    // Fallback: fetch any milestones available if user's goal milestones aren't seeded yet
-    milestonesDocs = await RoadmapMilestone.find().sort({ sequenceOrder: 1 }).limit(10);
+  let userProgressDocs = await UserNodeProgress.find({ userId }).sort({ unlockDay: 1 });
+
+  // If user has no progress entries yet, auto-trigger roadmap building for user's enrolled skills or goal
+  if (userProgressDocs.length === 0) {
+    const userSkillsDocs = await UserSkill.find({ userId }).lean();
+    const skillsToProcess = userSkillsDocs.map((s) => ({
+      skillId: s.skillId,
+      name: s.name || s.skillId,
+      level: s.level || 'Beginner',
+    }));
+
+    await processUserSkillsAndBuildRoadmap({
+      userId,
+      skills: skillsToProcess,
+      targetGoal,
+      experienceLevel,
+      dailyCommitmentMinutes,
+    });
+
+    userProgressDocs = await UserNodeProgress.find({ userId }).sort({ unlockDay: 1 });
   }
 
-  const milestoneIds = milestonesDocs.map((m) => m.id);
-  const nodesDocs = await RoadmapNode.find({ milestoneId: { $in: milestoneIds } }).sort({ sequenceOrder: 1 });
-
-  // 3. Fetch User Progress Rows
-  const userProgressDocs = await UserNodeProgress.find({ userId });
   const progressMap = new Map(userProgressDocs.map((p) => [p.nodeId, p]));
+  const userNodeIds = Array.from(progressMap.keys());
 
-  // 4. Join Data in Application Code
+  // 2. Fetch RoadmapNodes for user's enrolled skills
+  const nodesDocs = await RoadmapNode.find({ id: { $in: userNodeIds } }).sort({ sequenceOrder: 1 });
+
+  // 3. Fetch matching Milestones
+  const milestoneIds = Array.from(new Set(nodesDocs.map((n) => n.milestoneId)));
+  let milestonesDocs = await RoadmapMilestone.find({ id: { $in: milestoneIds } }).sort({ sequenceOrder: 1 });
+
+  // If milestones aren't explicitly grouped, group nodes under dynamic milestone buckets
+  if (milestonesDocs.length === 0 && nodesDocs.length > 0) {
+    milestonesDocs = [
+      {
+        id: 'ms-user-primary',
+        title: 'Active Skill Progression Ladder',
+        description: `Customized laddered milestones for ${targetGoal}`,
+        sequenceOrder: 1,
+        targetGoal,
+      } as any,
+    ];
+  }
+
+  // 4. Map and join data cleanly
   const milestones: ClientRoadmapMilestone[] = milestonesDocs.map((m) => {
-    const milestoneNodesDocs = nodesDocs.filter((n) => n.milestoneId === m.id);
+    const milestoneNodesDocs = nodesDocs.filter(
+      (n) => n.milestoneId === m.id || milestonesDocs.length === 1
+    );
 
     const nodes: ClientRoadmapNode[] = milestoneNodesDocs.map((n) => {
       const userProg = progressMap.get(n.id);
       const userCompletedSubtopics = new Set(userProg?.completedSubtopics || []);
       return {
         id: n.id,
-        milestoneId: n.milestoneId,
+        milestoneId: n.milestoneId || m.id,
         title: n.title,
         category: n.category,
         categoryLabel: n.categoryLabel,
@@ -77,7 +113,7 @@ export default async function RoadmapPage() {
       title: m.title,
       description: m.description,
       sequenceOrder: m.sequenceOrder,
-      targetGoal: m.targetGoal,
+      targetGoal: m.targetGoal || targetGoal,
       nodes,
     };
   });

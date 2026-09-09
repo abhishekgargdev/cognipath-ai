@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { AiRecommendation } from '@/lib/db/models/AiRecommendation';
-import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
-import { UserNodeProgress } from '@/lib/db/models/UserNodeProgress';
+import { UserProfile } from '@/lib/db/models/UserProfile';
+import { UserSkill } from '@/lib/db/models/UserSkill';
+import { processUserSkillsAndBuildRoadmap } from '@/lib/curriculum/roadmap-builder';
 
 export async function POST(
   req: Request,
@@ -12,7 +13,11 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || 'demo-user-id';
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
     const { id } = await params;
 
     await connectToDatabase();
@@ -32,35 +37,37 @@ export async function POST(
     rec.addedToRoadmap = true;
     await rec.save();
 
-    // 3. Insert / update RoadmapNode in Mongo
-    await RoadmapNode.findOneAndUpdate(
-      { id: rec.actionTopicId },
-      {
-        id: rec.actionTopicId,
-        milestoneId: 'milestone-adaptive',
-        title: rec.title,
-        description: rec.whyRecommendation,
-        category: rec.category || 'Adaptive Acquisition',
-        estMinutes: Math.round((rec.estHours || 2) * 60),
-        subtopicsCount: 3,
-        practiceQuestionsCount: 5,
-        sequenceOrder: 99,
-        prerequisites: (rec.prerequisites || []).map((p: any) => p.name),
-      },
-      { upsert: true, returnDocument: 'after' }
+    // 3. Fetch existing user skills and add recommended skill
+    const profile = await UserProfile.findOne({ userId }).lean();
+    const existingSkillsDocs = await UserSkill.find({ userId }).lean();
+
+    const existingSkills = existingSkillsDocs.map((s) => ({
+      skillId: s.skillId,
+      name: s.name || s.skillId,
+      level: s.level || 'Beginner',
+    }));
+
+    // Add recommended skill if not present
+    const exists = existingSkills.some(
+      (s) => s.skillId === rec.actionTopicId || s.name.toLowerCase() === rec.title.toLowerCase()
     );
 
-    // 4. Insert / update UserNodeProgress in Mongo
-    await UserNodeProgress.findOneAndUpdate(
-      { userId, nodeId: rec.actionTopicId },
-      {
-        userId,
-        nodeId: rec.actionTopicId,
-        status: 'available',
-        masteryPercent: 0,
-      },
-      { upsert: true, returnDocument: 'after' }
-    );
+    if (!exists) {
+      existingSkills.push({
+        skillId: rec.actionTopicId,
+        name: rec.title,
+        level: 'Intermediate',
+      });
+    }
+
+    // 4. Build dynamic laddered roadmap for updated skills roster
+    await processUserSkillsAndBuildRoadmap({
+      userId,
+      skills: existingSkills,
+      targetGoal: profile?.targetGoal || 'Full Stack Architect',
+      experienceLevel: profile?.experienceLevel || 'Intermediate',
+      dailyCommitmentMinutes: profile?.dailyCommitmentMinutes || 30,
+    });
 
     return NextResponse.json({
       success: true,
