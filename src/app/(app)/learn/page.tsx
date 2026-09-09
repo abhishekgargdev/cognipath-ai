@@ -8,10 +8,19 @@ import { RoadmapNode } from '@/lib/db/models/RoadmapNode';
 import { LoadingSpinner } from '@/components/common';
 import { BookOpen } from 'lucide-react';
 
-export default async function LearnRootPage() {
+export default async function LearnRootPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ topic?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect('/');
+  }
+
+  const resolvedParams = searchParams ? await searchParams : undefined;
+  if (resolvedParams?.topic) {
+    redirect(`/learn/${resolvedParams.topic}`);
   }
 
   const userId = session.user.id;

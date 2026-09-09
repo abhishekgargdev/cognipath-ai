@@ -37,7 +37,7 @@ export function SkillsClient() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  const [activeTab, setActiveTab] = useState<'catalog' | 'enrolled'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'enrolled'>('enrolled');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [commaInput, setCommaInput] = useState('');

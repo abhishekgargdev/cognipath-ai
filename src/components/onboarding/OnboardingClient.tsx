@@ -76,12 +76,7 @@ export function OnboardingClient() {
   // Form State
   const [selectedGoal, setSelectedGoal] = useState<CareerGoal>('Full Stack Developer');
   const [customGoal, setCustomGoal] = useState<string>('');
-  const [selectedSkills, setSelectedSkills] = useState<SkillProficiency[]>([
-    { skillId: 'js', name: 'JavaScript', level: 'Intermediate' },
-    { skillId: 'react', name: 'React', level: 'Intermediate' },
-    { skillId: 'nodejs', name: 'Node.js', level: 'Beginner' },
-    { skillId: 'sql', name: 'SQL & PostgreSQL', level: 'Beginner' },
-  ]);
+  const [selectedSkills, setSelectedSkills] = useState<SkillProficiency[]>([]);
   const [skillCategoryFilter, setSkillCategoryFilter] = useState<string>('All');
   const [commaSkillsInput, setCommaSkillsInput] = useState<string>('');
   const [overallExperience, setOverallExperience] = useState<ExperienceLevel>('Intermediate');

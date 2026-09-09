@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db/mongoose';
@@ -38,7 +39,8 @@ export async function GET() {
     await connectToDatabase();
 
     // 1. Fetch User document
-    let userDoc = await User.findOne({ id: userId }).lean();
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(userId);
+    let userDoc = isValidObjectId ? await User.findById(userId).lean() : null;
     if (!userDoc && session.user.email) {
       userDoc = await User.findOne({ email: session.user.email }).lean();
     }
@@ -101,10 +103,11 @@ export async function PATCH(req: Request) {
 
     // 1. Update User document if name provided
     if (data.name) {
-      await User.updateOne(
-        { $or: [{ id: userId }, { email: session.user.email }] },
-        { name: data.name }
-      );
+      const isValidObjectId = mongoose.Types.ObjectId.isValid(userId);
+      const userQuery = isValidObjectId
+        ? { $or: [{ _id: userId }, { email: session.user.email }] }
+        : { email: session.user.email };
+      await User.updateOne(userQuery, { name: data.name });
     }
 
     // 2. Update UserProfile document

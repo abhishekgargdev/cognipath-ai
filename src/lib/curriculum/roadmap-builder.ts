@@ -36,12 +36,20 @@ const SKILL_HIERARCHY_WEIGHTS: Record<string, number> = {
   nodejs: 65,
   express: 70,
   python: 72,
+  fastapi: 74,
+  django: 76,
+  sql: 78,
   postgresql: 80,
   mongodb: 82,
   redis: 85,
+  graphql: 88,
   docker: 90,
   kubernetes: 92,
+  aws: 93,
   dsa: 95,
+  ai: 97,
+  llm: 98,
+  rag: 99,
   'system-design': 100,
 };
 
@@ -82,14 +90,25 @@ export async function processUserSkillsAndBuildRoadmap(options: RoadmapBuildOpti
 
   let inputSkills = options.skills || [];
 
-  // If no skills provided, derive default initial skills for goal
+  // If no skills provided in options, check if user already has skills saved in DB
   if (inputSkills.length === 0) {
-    inputSkills = [
-      { name: 'JavaScript (ES2024+)', level: 'Intermediate' },
-      { name: 'TypeScript Architectures', level: 'Intermediate' },
-      { name: 'React & Server Components', level: 'Intermediate' },
-      { name: 'Node.js & Database Optimization', level: 'Advanced' },
-    ];
+    const existingUserSkills = await UserSkill.find({ userId }).lean();
+    if (existingUserSkills.length > 0) {
+      inputSkills = existingUserSkills.map((s) => ({
+        skillId: s.skillId,
+        name: s.name || s.skillId,
+        level: s.level || experienceLevel,
+      }));
+    }
+  }
+
+  // If user has not selected any skills yet, return 0 enrolled skills without injecting hardcoded defaults
+  if (inputSkills.length === 0) {
+    return {
+      success: true,
+      enrolledCount: 0,
+      nodeIds: [],
+    };
   }
 
   // 1. Ladder and sequence skills logically

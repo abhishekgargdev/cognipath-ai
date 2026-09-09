@@ -33,11 +33,20 @@ export async function GET() {
     }
 
     // 2. Fetch current active topic/node
-    const currentTopicId = profile.currentTopicId || 'js-event-loop';
-    const currentTopic = await RoadmapNode.findOne({ id: currentTopicId }).lean();
+    let currentTopicId = profile.currentTopicId;
+    if (!currentTopicId) {
+      const firstUserNode = await UserNodeProgress.findOne({ userId }).sort({ unlockDay: 1 }).lean();
+      if (firstUserNode?.nodeId) {
+        currentTopicId = firstUserNode.nodeId;
+      }
+    }
+
+    const currentTopic = currentTopicId ? await RoadmapNode.findOne({ id: currentTopicId }).lean() : null;
 
     // 3. Fetch node progress
-    const progress = await UserNodeProgress.findOne({ userId, nodeId: currentTopicId }).lean();
+    const progress = currentTopicId
+      ? await UserNodeProgress.findOne({ userId, nodeId: currentTopicId }).lean()
+      : null;
 
     // 4. Check readiness of Lesson and Practice Questions
     const lessonDoc = await Lesson.findOne({ topicId: currentTopicId }).lean();
