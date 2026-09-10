@@ -1,145 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skill Roadmap Creation Started</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: #F9F7F2;
-      color: #121212;
-      margin: 0;
-      padding: 0;
-      -webkit-font-smoothing: antialiased;
-    }
-    .wrapper {
-      max-width: 600px;
-      margin: 30px auto;
-      background-color: #FFFFFF;
-      border: 1px solid #DCD9D1;
-      border-radius: 4px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    }
-    .header {
-      background-color: #121212;
-      color: #F4F2EC;
-      padding: 24px;
-      text-align: center;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-    }
-    .header span {
-      color: #E08A95;
-      font-style: italic;
-    }
-    .content {
-      padding: 32px 28px;
-    }
-    .badge {
-      display: inline-block;
-      background-color: #8B2635;
-      color: #FFFFFF;
-      font-size: 11px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      padding: 4px 10px;
-      border-radius: 2px;
-      margin-bottom: 16px;
-    }
-    .title {
-      font-size: 22px;
-      font-weight: 800;
-      margin-top: 0;
-      margin-bottom: 12px;
-      color: #121212;
-    }
-    .text {
-      font-size: 14px;
-      line-height: 1.6;
-      color: #5C5852;
-      margin-bottom: 20px;
-    }
-    .skill-box {
-      background-color: #F4F1EA;
-      border: 1px solid #DCD9D1;
-      border-radius: 4px;
-      padding: 16px;
-      margin-bottom: 24px;
-    }
-    .skill-box h3 {
-      margin: 0 0 8px 0;
-      font-size: 14px;
-      color: #121212;
-    }
-    .skill-list {
-      margin: 0;
-      padding-left: 20px;
-      font-size: 13px;
-      color: #121212;
-    }
-    .skill-list li {
-      margin-bottom: 4px;
-    }
-    .btn {
-      display: inline-block;
-      background-color: #121212;
-      color: #FFFFFF !important;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: bold;
-      padding: 12px 24px;
-      border-radius: 2px;
-      margin-top: 8px;
-    }
-    .footer {
-      background-color: #F4F1EA;
-      padding: 16px 28px;
-      border-top: 1px solid #DCD9D1;
-      font-size: 12px;
-      color: #9E9A91;
-      text-align: center;
-    }
-  </style>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Skill Roadmap Building Started</title>
 </head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>CogniPath <span>AI</span></h1>
-    </div>
-    <div class="content">
-      <span class="badge">Processing</span>
-      <h2 class="title">Roadmap Creation Initialized</h2>
-      <p class="text">
-        Hello <strong><%= userName || 'Learner' %></strong>,<br>
-        We have initiated background synthesis of your personalized adaptive learning roadmap for <strong><%= targetGoal %></strong>.
-      </p>
-      <div class="skill-box">
-        <h3>Skills Being Synthesized:</h3>
-        <ul class="skill-list">
-          <% if (skills && skills.length > 0) { %>
-            <% skills.forEach(function(skill) { %>
-              <li><strong><%= skill.name || skill %></strong> <% if (skill.level) { %>(<%= skill.level %>)<% } %></li>
-            <% }); %>
-          <% } else { %>
-            <li>Selected Curriculum Skills</li>
-          <% } %>
-        </ul>
-      </div>
-      <p class="text">
-        Our AI engine is currently laddering prerequisites, calculating skill graph dependencies, and initializing node milestones. You will receive another notification once your roadmap synthesis is complete.
-      </p>
-      <a href="<%= appUrl %>/onboarding?status=processing" class="btn">View Preparation Status</a>
-    </div>
-    <div class="footer">
-      &copy; <%= currentYear %> CogniPath AI. Adaptive Curricular Intelligence.
-    </div>
-  </div>
+<body style="margin: 0; padding: 0; background-color: #F9F7F2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F9F7F2; table-layout: fixed; padding: 30px 10px;">
+    <tr>
+      <td align="center" style="padding: 0;">
+        <!-- Container Table -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #FFFFFF; border: 1px solid #DCD9D1; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background-color: #121212; padding: 24px 30px; text-align: center; border-bottom: 3px solid #8B2635;">
+              <h1 style="margin: 0; color: #F4F2EC; font-size: 22px; font-weight: 900; font-family: Georgia, serif; letter-spacing: -0.5px;">
+                CogniPath <span style="color: #E08A95; font-style: italic;">AI</span>
+              </h1>
+              <p style="margin: 4px 0 0 0; color: #9E9A91; font-size: 11px; font-family: monospace; text-transform: uppercase; letter-spacing: 1.5px;">
+                Adaptive Learning Engine
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Body Content -->
+          <tr>
+            <td style="padding: 32px 30px; background-color: #FFFFFF;">
+              <!-- Status Pill -->
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+                <tr>
+                  <td style="background-color: #8B2635; color: #FFFFFF; font-size: 10px; font-weight: bold; font-family: monospace; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 3px;">
+                    ⚡ Roadmap Building Initialized
+                  </td>
+                </tr>
+              </table>
+
+              <h2 style="margin: 0 0 12px 0; color: #121212; font-size: 20px; font-weight: 800; font-family: Georgia, serif; line-height: 1.3;">
+                Roadmap Creation Underway
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #5C5852; font-size: 14px; line-height: 1.6;">
+                Hello <strong style="color: #121212;"><%= userName || 'Learner' %></strong>,<br />
+                We have initiated background AI synthesis of your custom learning roadmap for <strong style="color: #8B2635;"><%= targetGoal %></strong>.
+              </p>
+
+              <!-- Skills Card Box -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F4F1EA; border: 1px solid #DCD9D1; border-radius: 4px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <p style="margin: 0 0 10px 0; color: #121212; font-size: 13px; font-weight: bold; font-family: Georgia, serif; text-transform: uppercase; letter-spacing: 0.5px;">
+                      Skills Being Synthesized:
+                    </p>
+                    <ul style="margin: 0; padding-left: 18px; color: #121212; font-size: 13px; line-height: 1.8;">
+                      <% if (skills && skills.length > 0) { %>
+                        <% skills.forEach(function(skill) { %>
+                          <li style="margin-bottom: 4px;">
+                            <strong style="color: #121212;"><%= skill.name || skill %></strong>
+                            <% if (skill.level) { %>
+                              <span style="color: #8B2635; font-size: 11px; font-family: monospace;"> (<%= skill.level %>)</span>
+                            <% } %>
+                          </li>
+                        <% }); %>
+                      <% } else { %>
+                        <li style="color: #121212;">Selected Competency Modules</li>
+                      <% } %>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 24px 0; color: #5C5852; font-size: 13px; line-height: 1.6;">
+                Our engine is computing prerequisite DAG dependency graphs and preparing structured topic milestones. You will receive another confirmation email once content synthesis finishes.
+              </p>
+
+              <!-- Call to Action Button -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <a href="<%= appUrl %>/onboarding?status=processing" target="_blank" style="display: inline-block; background-color: #121212; color: #FFFFFF !important; text-decoration: none; font-size: 13px; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 12px 28px; border-radius: 4px; border: 1px solid #121212; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                      Inspect Preparation Progress &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F4F1EA; padding: 18px 30px; border-top: 1px solid #DCD9D1; text-align: center;">
+              <p style="margin: 0; color: #9E9A91; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.5;">
+                &copy; <%= currentYear %> CogniPath AI. Adaptive Curricular Intelligence.<br />
+                This is an automated notification sent regarding your learning syllabus.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>

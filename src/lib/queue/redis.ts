@@ -33,7 +33,6 @@ export function getRedisConnection(): Redis | null {
   const url = getRedisUrl();
   if (!url) {
     // If no Redis connection string or Upstash config is available, return null.
-    // Avoid connecting to 127.0.0.1:6379 to eliminate ECONNREFUSED log noise.
     return null;
   }
 
@@ -41,7 +40,6 @@ export function getRedisConnection(): Redis | null {
     connection = new Redis(url, {
       maxRetriesPerRequest: null, // Required by BullMQ
       enableReadyCheck: false,
-      lazyConnect: true,
       retryStrategy(times) {
         if (times > 3) {
           connectionFailed = true;
@@ -52,7 +50,6 @@ export function getRedisConnection(): Redis | null {
     });
 
     connection.on('error', (err: any) => {
-      // Suppress unhandled ECONNREFUSED error spam in server logs
       if (err?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
         connectionFailed = true;
       } else {

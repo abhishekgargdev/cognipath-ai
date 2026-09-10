@@ -74,11 +74,35 @@ Rules:
 
   const prompt = `Generate standard curriculum specification for skill: ${input.skillName}`;
 
-  let response = await aiRouter.execute({
-    prompt,
-    systemPrompt,
-    jsonMode: true,
-  });
+  let response;
+  try {
+    response = await aiRouter.execute({
+      prompt,
+      systemPrompt,
+      jsonMode: true,
+    });
+  } catch (aiErr: any) {
+    console.warn(`[AI Task: ${taskName}] AI Router unavailable, returning deterministic curriculum node for ${input.skillName}:`, aiErr?.message || aiErr);
+    return {
+      skillId,
+      milestoneTitle: `${input.skillName} Core Competencies`,
+      milestoneDescription: `Master foundational principles and practical usage of ${input.skillName}.`,
+      title: input.skillName,
+      category: 'core-engineering',
+      categoryLabel: 'Core Engineering Discipline',
+      difficulty: (['Beginner', 'Intermediate', 'Advanced'].includes(input.experienceLevel || '') ? input.experienceLevel as any : 'Intermediate'),
+      estMinutes: 40,
+      prerequisites: [],
+      whyItMatters: `Essential for technical proficiency in ${input.skillName}.`,
+      description: `Comprehensive guide and hands-on exercises covering ${input.skillName} core mechanics.`,
+      subtopics: [
+        { id: `sub-${skillSlug}-1`, title: `${input.skillName} Fundamentals & Setup`, sequenceOrder: 1 },
+        { id: `sub-${skillSlug}-2`, title: `Core Implementation & Best Practices`, sequenceOrder: 2 },
+        { id: `sub-${skillSlug}-3`, title: `Advanced Usage & Optimization`, sequenceOrder: 3 },
+      ],
+      careerRelevance: `High-demand skill widely applied in industry production environments.`,
+    };
+  }
 
   try {
     const json = JSON.parse(response.text);
@@ -88,22 +112,21 @@ Rules:
   } catch (firstErr: any) {
     console.warn(`[AI Task: ${taskName}] Initial Zod parse failed, retrying...`, firstErr);
 
-    const retryPrompt = `${prompt}\n\nCRITICAL FIX REQUIRED: Previous output failed validation with error:\n${firstErr.message || firstErr}\nEnsure strictly valid JSON output.`;
-
-    response = await aiRouter.execute({
-      prompt: retryPrompt,
-      systemPrompt,
-      jsonMode: true,
-    });
-
     try {
+      const retryPrompt = `${prompt}\n\nCRITICAL FIX REQUIRED: Previous output failed validation with error:\n${firstErr.message || firstErr}\nEnsure strictly valid JSON output.`;
+
+      response = await aiRouter.execute({
+        prompt: retryPrompt,
+        systemPrompt,
+        jsonMode: true,
+      });
+
       const jsonRetry = JSON.parse(response.text);
       const validatedRetry = generatedSkillNodeSchema.parse(jsonRetry);
       await setCachedTaskResult(taskName, input, validatedRetry, 30 * 24 * 3600);
       return validatedRetry;
     } catch (secondErr: any) {
-      console.error(`[AI Task: ${taskName}] Zod validation failed on retry:`, secondErr);
-      // Fallback deterministic object creation for resilient UX
+      console.error(`[AI Task: ${taskName}] Fallback triggered on Zod retry error:`, secondErr);
       return {
         skillId,
         milestoneTitle: `${input.skillName} Core Competencies`,

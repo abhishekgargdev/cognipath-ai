@@ -37,8 +37,8 @@ class AIRouter {
   }
 
   private getDailyLimitPerKey(): number {
-    const limit = parseInt(process.env.GEMINI_DAILY_LIMIT_PER_KEY || '20', 10);
-    return isNaN(limit) || limit <= 0 ? 20 : limit;
+    const limit = parseInt(process.env.GEMINI_DAILY_LIMIT_PER_KEY || '1000', 10);
+    return isNaN(limit) || limit <= 0 ? 1000 : limit;
   }
 
   private async isKeyQuotaExhausted(keyIndex: number): Promise<boolean> {

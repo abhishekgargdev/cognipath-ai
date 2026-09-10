@@ -41,13 +41,17 @@ export default async function RoadmapPage() {
       level: s.level || 'Beginner',
     }));
 
-    await processUserSkillsAndBuildRoadmap({
-      userId,
-      skills: skillsToProcess,
-      targetGoal,
-      experienceLevel,
-      dailyCommitmentMinutes,
-    });
+    try {
+      await processUserSkillsAndBuildRoadmap({
+        userId,
+        skills: skillsToProcess,
+        targetGoal,
+        experienceLevel,
+        dailyCommitmentMinutes,
+      });
+    } catch (buildErr) {
+      console.warn('[Roadmap Page] Non-blocking roadmap build warning:', buildErr);
+    }
 
     userProgressDocs = await UserNodeProgress.find({ userId }).sort({ unlockDay: 1 });
   }
