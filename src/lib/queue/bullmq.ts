@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { getRedisConnection } from './redis';
+import { getRedisOptions } from './redis';
 
 export interface RoadmapWorkflowJobData {
   userId: string;
@@ -32,14 +32,13 @@ let cognipathQueue: Queue | null = null;
 export function getCognipathQueue(): Queue | null {
   if (cognipathQueue) return cognipathQueue;
 
-  const connection = getRedisConnection();
-  if (!connection) return null;
+  const connectionOpts = getRedisOptions();
+  if (!connectionOpts) return null;
 
   try {
     cognipathQueue = new Queue(COGNIPATH_QUEUE_NAME, {
-      connection,
+      connection: connectionOpts,
       defaultJobOptions: {
-        // Automatically remove completed jobs from Redis immediately to prevent memory overburdening
         removeOnComplete: true,
         removeOnFail: { age: 86400, count: 50 },
         attempts: 2,

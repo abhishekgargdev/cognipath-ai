@@ -26,24 +26,45 @@ export function getRedisUrl(): string | null {
   return null;
 }
 
+export function getRedisOptions(): any {
+  const url = getRedisUrl();
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port || '6379', 10),
+      username: parsed.username ? decodeURIComponent(parsed.username) : 'default',
+      password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+      tls: parsed.protocol === 'rediss:' ? {} : undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    };
+  } catch {
+    return {
+      url,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    };
+  }
+}
+
 export function getRedisConnection(): Redis | null {
   if (connection) return connection;
   if (connectionFailed) return null;
 
   const url = getRedisUrl();
-  if (!url) {
-    // If no Redis connection string or Upstash config is available, return null.
-    return null;
-  }
+  if (!url) return null;
 
   try {
     connection = new Redis(url, {
-      maxRetriesPerRequest: null, // Required by BullMQ
+      maxRetriesPerRequest: null,
       enableReadyCheck: false,
       retryStrategy(times) {
         if (times > 3) {
           connectionFailed = true;
-          return null; // Stop retrying after 3 failed connection attempts
+          return null;
         }
         return Math.min(times * 500, 2000);
       },

@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq';
-import { getRedisConnection } from './redis';
+import { getRedisOptions } from './redis';
 import { COGNIPATH_QUEUE_NAME, RoadmapWorkflowJobData, DailyQuestionsEmailJobData } from './bullmq';
 import { sendEmail } from '../email/transporter';
 import { processUserSkillsAndBuildRoadmap } from '../curriculum/roadmap-builder';
@@ -177,14 +177,13 @@ export async function executeRoadmapWorkflowDirectly(data: RoadmapWorkflowJobDat
   }
 }
 
-// BullMQ Worker setup
 let cognipathWorker: Worker | null = null;
 
 export function initCognipathWorker(): Worker | null {
   if (cognipathWorker) return cognipathWorker;
 
-  const connection = getRedisConnection();
-  if (!connection) return null;
+  const connectionOpts = getRedisOptions();
+  if (!connectionOpts) return null;
 
   try {
     cognipathWorker = new Worker(
@@ -209,7 +208,7 @@ export function initCognipathWorker(): Worker | null {
         }
       },
       {
-        connection,
+        connection: connectionOpts,
         concurrency: 3,
       }
     );
