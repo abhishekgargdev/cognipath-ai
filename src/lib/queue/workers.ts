@@ -230,7 +230,6 @@ export function initCognipathWorker(): Worker | null {
   }
 }
 
-// Auto-initialize worker when imported in Node process
-if (typeof window === 'undefined') {
-  initCognipathWorker();
-}
+// Lazy initialize worker when required
+// Do not auto-initialize on module load to prevent unnecessary connection attempts
+
