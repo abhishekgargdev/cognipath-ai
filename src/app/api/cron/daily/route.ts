@@ -230,6 +230,47 @@ export async function GET(req: Request) {
       }
     }
 
+    // 6. Step F: Dispatch Daily Question info emails to active users via BullMQ
+    let emailsDispatched = 0;
+    const { User } = await import('@/lib/db/models/User');
+    const { enqueueDailyQuestionsEmail } = await import('@/lib/queue/bullmq');
+
+    for (const profile of activeProfiles) {
+      if (!profile.userId) continue;
+
+      const userDoc = await User.findOne({
+        $or: [{ _id: profile.userId }, { id: profile.userId }],
+      }).lean();
+
+      const userEmail = userDoc?.email;
+      if (!userEmail) continue;
+
+      const topicId = profile.currentTopicId || prioritizedTopics[0] || 'js-event-loop';
+      const nodeDoc = await RoadmapNode.findOne({ id: topicId }).lean();
+      const topicTitle = nodeDoc?.title || topicId.replace(/[-_]/g, ' ').toUpperCase();
+
+      const assignedQuestions = await PracticeQuestion.find({ topicId, status: 'ready' })
+        .limit(5)
+        .lean();
+
+      if (assignedQuestions.length > 0) {
+        await enqueueDailyQuestionsEmail({
+          userId: profile.userId,
+          email: userEmail,
+          userName: userDoc?.name || 'Learner',
+          topicTitle,
+          questions: assignedQuestions.map((q) => ({
+            title: q.title,
+            type: q.type,
+            difficulty: q.difficulty,
+            estMinutes: q.estMinutes || 10,
+          })),
+        }).catch((err) => console.warn('[Daily Cron] Email dispatch failed for user:', err));
+
+        emailsDispatched++;
+      }
+    }
+
     // Clean up failed pending placeholders older than 1 hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     await PracticeQuestion.deleteMany({ status: 'pending', createdAt: { $lt: oneHourAgo } });
@@ -245,6 +286,7 @@ export async function GET(req: Request) {
         lessonsGenerated,
         questionsGenerated,
         recommendationsRefreshed,
+        emailsDispatched,
       },
     });
   } catch (error: any) {

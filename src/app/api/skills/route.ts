@@ -147,7 +147,27 @@ export async function POST(req: Request) {
     const experienceLevel = profile?.experienceLevel || 'Intermediate';
     const dailyCommitmentMinutes = profile?.dailyCommitmentMinutes || 30;
 
-    // Process skills, save to UserSkill, and generate skill-laddered roadmap
+    const userEmail = session?.user?.email || '';
+    const userName = session?.user?.name || 'Learner';
+
+    // Mark status processing while background workflow runs
+    await UserProfile.updateOne({ userId }, { onboardingStatus: 'processing' });
+
+    // Trigger async BullMQ roadmap workflow (Start Email -> Build Roadmap -> Roadmap Complete Email -> Content Gen -> Content Complete Email -> Clear Redis Job)
+    const { enqueueRoadmapWorkflow } = await import('@/lib/queue/bullmq');
+    enqueueRoadmapWorkflow({
+      userId,
+      email: userEmail,
+      userName,
+      targetGoal,
+      experienceLevel,
+      skills: selectedSkills,
+      dailyCommitmentMinutes,
+    }).catch((err) => {
+      console.error('[Skills POST] Async background execution failed:', err);
+    });
+
+    // Also run immediate build for synchronous return compatibility
     const result = await processUserSkillsAndBuildRoadmap({
       userId,
       skills: selectedSkills,
@@ -160,6 +180,7 @@ export async function POST(req: Request) {
       success: true,
       enrolledCount: result.enrolledCount,
       nodeIds: result.nodeIds,
+      status: 'processing',
     });
   } catch (error: any) {
     console.error('[Skills POST API Error]:', error);

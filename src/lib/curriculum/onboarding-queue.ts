@@ -6,6 +6,8 @@ import { processUserSkillsAndBuildRoadmap, UserSkillInputItem } from '@/lib/curr
 
 export interface OnboardingJobData {
   userId: string;
+  userEmail?: string;
+  userName?: string;
   targetGoal: string;
   customGoal?: string | null;
   experienceLevel: 'Complete Beginner' | 'Beginner' | 'Intermediate' | 'Advanced';
@@ -70,44 +72,20 @@ export async function clearOnboardingJob(userId: string): Promise<void> {
 }
 
 /**
- * Execute the onboarding generation job asynchronously chunk-by-chunk.
+ * Execute the onboarding generation job asynchronously chunk-by-chunk with email alerts and content generation.
  */
 export async function executeOnboardingJobAsync(userId: string, data: OnboardingJobData): Promise<void> {
-  try {
-    await connectToDatabase();
-
-    const finalGoal = data.customGoal ? data.customGoal : data.targetGoal;
-
-    // 1. Process skills and build roadmap dynamically
-    await processUserSkillsAndBuildRoadmap({
-      userId,
-      skills: data.selectedSkills,
-      targetGoal: finalGoal,
-      experienceLevel: data.experienceLevel,
-      dailyCommitmentMinutes: data.dailyCommitmentMinutes,
-    });
-
-    // 2. Mark UserProfile as completed
-    await UserProfile.updateOne(
-      { userId },
-      {
-        onboardingStatus: 'completed',
-        onboardingCompletedAt: new Date(),
-      }
-    );
-
-    // 3. Clear Redis Job
-    await clearOnboardingJob(userId);
-    console.log(`[OnboardingQueue] Successfully completed async onboarding generation for user ${userId}`);
-  } catch (err) {
-    console.error(`[OnboardingQueue] Error executing onboarding job for user ${userId}:`, err);
-    // Even if AI task fails partially, mark completed so user is unblocked
-    await UserProfile.updateOne(
-      { userId },
-      {
-        onboardingStatus: 'completed',
-        onboardingCompletedAt: new Date(),
-      }
-    ).catch(() => {});
-  }
+  // Delegate to BullMQ worker workflow which executes start email -> roadmap creation -> complete email -> content gen -> content complete email -> Redis cleanup
+  const { executeRoadmapWorkflowDirectly } = await import('@/lib/queue/workers');
+  await executeRoadmapWorkflowDirectly({
+    userId,
+    email: data.userEmail || '',
+    userName: data.userName || 'Learner',
+    targetGoal: data.targetGoal,
+    customGoal: data.customGoal,
+    experienceLevel: data.experienceLevel,
+    skills: data.selectedSkills,
+    dailyCommitmentMinutes: data.dailyCommitmentMinutes,
+  });
 }
+

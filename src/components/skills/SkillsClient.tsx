@@ -96,7 +96,7 @@ export function SkillsClient() {
       });
 
       if (res.ok) {
-        toast.success('Skills roster updated! Curriculum roadmap recalculated.');
+        toast.success('Skills roster updated! Email notification sent & roadmap synthesis started.');
         router.refresh();
       } else {
         toast.error('Failed to sync skill roster.');

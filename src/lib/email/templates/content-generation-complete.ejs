@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learning Content Prepared!</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #F9F7F2;
+      color: #121212;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 30px auto;
+      background-color: #FFFFFF;
+      border: 1px solid #DCD9D1;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .header {
+      background-color: #121212;
+      color: #F4F2EC;
+      padding: 24px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+    .header span {
+      color: #E08A95;
+      font-style: italic;
+    }
+    .content {
+      padding: 32px 28px;
+    }
+    .badge {
+      display: inline-block;
+      background-color: #8B2635;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 2px;
+      margin-bottom: 16px;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #121212;
+    }
+    .text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #5C5852;
+      margin-bottom: 20px;
+    }
+    .highlight-box {
+      background-color: #F4F1EA;
+      border-left: 4px solid #8B2635;
+      padding: 16px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: #121212;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #121212;
+      color: #FFFFFF !important;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 12px 24px;
+      border-radius: 2px;
+      margin-top: 8px;
+    }
+    .footer {
+      background-color: #F4F1EA;
+      padding: 16px 28px;
+      border-top: 1px solid #DCD9D1;
+      font-size: 12px;
+      color: #9E9A91;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>CogniPath <span>AI</span></h1>
+    </div>
+    <div class="content">
+      <span class="badge">Content Synthesized</span>
+      <h2 class="title">Learning Material & Lessons Ready</h2>
+      <p class="text">
+        Hello <strong><%= userName || 'Learner' %></strong>,<br>
+        Detailed lesson treatises, code examples, and practice question pools have been successfully generated for your active topics.
+      </p>
+      <div class="highlight-box">
+        <strong>What's Ready:</strong>
+        <ul>
+          <li>Interactive Lesson Modules & Key Takeaways</li>
+          <li>5 Daily Diagnostic Practice Questions</li>
+          <li>Sandboxed Code Execution Test Cases</li>
+        </ul>
+      </div>
+      <p class="text">
+        You can dive straight into your current active topic and complete today's practice set to build your streak.
+      </p>
+      <a href="<%= appUrl %>/dashboard" class="btn">Start Today's Lesson</a>
+    </div>
+    <div class="footer">
+      &copy; <%= currentYear %> CogniPath AI. Adaptive Curricular Intelligence.
+    </div>
+  </div>
+</body>
+</html>

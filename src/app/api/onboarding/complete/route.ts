@@ -60,9 +60,14 @@ export async function POST(req: Request) {
       { upsert: true, returnDocument: 'after' }
     );
 
+    const userEmail = session.user.email || '';
+    const userName = session.user.name || 'Learner';
+
     // 2. Build Job Data payload for Redis queue
     const jobData: OnboardingJobData = {
       userId,
+      userEmail,
+      userName,
       targetGoal: finalGoal,
       customGoal: data.customGoal,
       experienceLevel: data.experienceLevel,
@@ -75,11 +80,21 @@ export async function POST(req: Request) {
       totalCount: data.selectedSkills.length || 1,
     };
 
-    // Save job to Upstash Redis
+    // Save job to Upstash Redis for UI progress tracking
     await saveOnboardingJob(userId, jobData);
 
-    // 3. Trigger async generation background task WITHOUT blocking HTTP response
-    executeOnboardingJobAsync(userId, jobData).catch((err) => {
+    // 3. Trigger async BullMQ workflow (Roadmap Start Email -> Build Roadmap -> Roadmap Complete Email -> Content Generation -> Content Complete Email -> Clear Redis Job)
+    const { enqueueRoadmapWorkflow } = await import('@/lib/queue/bullmq');
+    enqueueRoadmapWorkflow({
+      userId,
+      email: userEmail,
+      userName,
+      targetGoal: finalGoal,
+      customGoal: data.customGoal,
+      experienceLevel: data.experienceLevel,
+      skills: data.selectedSkills,
+      dailyCommitmentMinutes: data.dailyCommitmentMinutes,
+    }).catch((err) => {
       console.error('[Onboarding Complete] Async background execution failed:', err);
     });
 

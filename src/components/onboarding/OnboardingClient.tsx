@@ -100,13 +100,13 @@ export function OnboardingClient() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const generationLog = [
-    'Analyzing target role: ' + (customGoal || selectedGoal) + '...',
-    'Storing bulk skill job in Upstash Redis queue...',
-    'Executing non-blocking background skill node synthesis...',
-    'Benchmarking current experience level & prerequisite DAG...',
-    'Sequencing modular learning nodes & milestones...',
-    'Persisting user syllabus profile & node progress to MongoDB...',
-    'Personalized AI learning roadmap successfully generated!',
+    'Analyzing target role & sending roadmap initialization email...',
+    'Enqueueing skill synthesis job in BullMQ Redis queue...',
+    'Synthesizing topological skill nodes & prerequisite DAG...',
+    'Roadmap building complete! Sending confirmation email...',
+    'Generating interactive lesson modules & practice questions...',
+    'Content synthesis complete! Sending final email notification...',
+    'Personalized AI learning roadmap & content ready!',
   ];
 
   // If page loaded with ?status=processing, open directly to Step 6 and start status polling

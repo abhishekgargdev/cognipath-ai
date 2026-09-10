@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Daily Practice Questions are Ready!</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #F9F7F2;
+      color: #121212;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 30px auto;
+      background-color: #FFFFFF;
+      border: 1px solid #DCD9D1;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .header {
+      background-color: #121212;
+      color: #F4F2EC;
+      padding: 24px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+    .header span {
+      color: #E08A95;
+      font-style: italic;
+    }
+    .content {
+      padding: 32px 28px;
+    }
+    .badge {
+      display: inline-block;
+      background-color: #8B2635;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 2px;
+      margin-bottom: 16px;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #121212;
+    }
+    .text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #5C5852;
+      margin-bottom: 20px;
+    }
+    .questions-box {
+      background-color: #F4F1EA;
+      border: 1px solid #DCD9D1;
+      border-radius: 4px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .questions-box h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #121212;
+    }
+    .q-item {
+      padding: 8px 0;
+      border-bottom: 1px border #DCD9D1;
+      font-size: 13px;
+    }
+    .q-item:last-child {
+      border-bottom: none;
+    }
+    .q-title {
+      font-weight: bold;
+      color: #121212;
+    }
+    .q-meta {
+      font-size: 11px;
+      color: #5C5852;
+      margin-top: 2px;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #8B2635;
+      color: #FFFFFF !important;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 12px 24px;
+      border-radius: 2px;
+      margin-top: 8px;
+    }
+    .footer {
+      background-color: #F4F1EA;
+      padding: 16px 28px;
+      border-top: 1px solid #DCD9D1;
+      font-size: 12px;
+      color: #9E9A91;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>CogniPath <span>AI</span></h1>
+    </div>
+    <div class="content">
+      <span class="badge">Daily Practice Assigned</span>
+      <h2 class="title">5 Daily Practice Questions Ready</h2>
+      <p class="text">
+        Hello <strong><%= userName || 'Learner' %></strong>,<br>
+        Your daily practice questions for topic <strong><%= topicTitle || 'Active Topic' %></strong> have been assigned and are ready in your sandboxed code runner.
+      </p>
+      <div class="questions-box">
+        <h3>Assigned Challenge Set:</h3>
+        <% if (questions && questions.length > 0) { %>
+          <% questions.forEach(function(q, index) { %>
+            <div class="q-item">
+              <div class="q-title"><%= index + 1 %>. <%= q.title || 'Diagnostic Question' %></div>
+              <div class="q-meta">Type: <%= (q.type || 'Practice').toUpperCase() %> | Difficulty: <%= q.difficulty || 'Intermediate' %> | Est: <%= q.estMinutes || 10 %> mins</div>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <div class="q-item">
+            <div class="q-title">5 Sandboxed Code Execution & MCQ Questions</div>
+            <div class="q-meta">Calibrated to your active roadmap node.</div>
+          </div>
+        <% } %>
+      </div>
+      <p class="text">
+        Solve today's questions to maintain your learning streak and unlock the next milestone on your roadmap!
+      </p>
+      <a href="<%= appUrl %>/practice" class="btn">Solve Daily Practice Set</a>
+    </div>
+    <div class="footer">
+      &copy; <%= currentYear %> CogniPath AI. Adaptive Curricular Intelligence.
+    </div>
+  </div>
+</body>
+</html>
